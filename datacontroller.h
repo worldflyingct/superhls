@@ -1,7 +1,7 @@
 #ifndef __DATACONTROLLER_H__
 #define __DATACONTROLLER_H__
 
-#define TSDATABUFFSIZE   512*1024
+#define TSDATABUFFSIZE   1024*1024
 
 struct TSDATALIST {
     size_t id;

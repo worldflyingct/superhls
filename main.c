@@ -118,7 +118,7 @@ int main(int argc, char *argv[]) {
     signal(SIGALRM, createtsfile);
     struct itimerval itv;
     itv.it_value.tv_sec = itv.it_interval.tv_sec = 0;
-    itv.it_value.tv_usec = itv.it_interval.tv_usec = 333333;
+    itv.it_value.tv_usec = itv.it_interval.tv_usec = 666666;
     setitimer(ITIMER_REAL, &itv, NULL);
     struct MHD_Daemon *daemon = MHD_start_daemon(MHD_USE_EPOLL_INTERNALLY, 8001, NULL, NULL, &connectionHandler, NULL, MHD_OPTION_END);
     if (daemon == NULL) {
