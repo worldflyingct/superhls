@@ -1,4 +1,5 @@
 *.o
 superhlsserver
 .vscode
+store
 

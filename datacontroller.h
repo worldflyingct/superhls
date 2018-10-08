@@ -1,10 +1,10 @@
 #ifndef __DATACONTROLLER_H__
 #define __DATACONTROLLER_H__
 
-#define TSDATABUFFSIZE   512*1024
+#define TSDATABUFFSIZE   128*1024
 
 struct TSDATALIST {
-    int id;
+    size_t id;
     char* data;
     size_t len;
     struct TSDATALIST* tail;
@@ -19,7 +19,7 @@ struct TOPICLIST {
     struct TSDATALIST* tsdatalistdesc;
     struct TSDATALIST* tsdatalisttail;
     size_t tsdatanum;
-    int tsdatastep;
+    size_t tsdatastep;
     struct TOPICLIST* head;
     struct TOPICLIST* tail;
 };
@@ -28,7 +28,7 @@ struct TOPICLIST *gettopiclist (const char* topic);
 struct TOPICLIST *addtopictolist (const char* topic);
 void removetopicfromlist (struct TOPICLIST *topiclist);
 void addtsdatatobuff (struct TOPICLIST *topiclist, const char *data, size_t len);
-char *createm3u8file (char *topic, size_t* len);
+char *createm3u8file (char *topic, char* httphost, size_t httphostlen, size_t* len);
 char *gettsfile (char *topic, int id, size_t *len);
 
 #endif

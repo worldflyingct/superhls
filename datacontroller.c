@@ -3,24 +3,32 @@
 #include <string.h>
 #include "datacontroller.h"
 
+#ifdef SAVEFILE
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#endif
+
 struct TOPICLIST *topiclisthead = NULL;
 struct TOPICLIST *topiclisttail = NULL;
 
 struct TOPICLIST *gettopiclist (const char* topic) {
     struct TOPICLIST *topiclist = topiclisthead;
-    if (topiclist == NULL) {
-         printf("topiclist is null, in %s, at %d\n", __FILE__, __LINE__);
-        return NULL;
-    }
     while (topiclist != NULL) {
-        printf("topic:%c,%c,%c,%c,%c,%c, in %s, at %d\n",
-                topiclist->topic[0], topiclist->topic[1], topiclist->topic[2], topiclist->topic[3], topiclist->topic[4], topiclist->topic[5], topiclist->topic[6],
+#ifdef DEBUG
+        printf("topic:%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d, in %s, at %d\n",
+                topiclist->topic[0], topiclist->topic[1], topiclist->topic[2], topiclist->topic[3], topiclist->topic[4], topiclist->topic[5], topiclist->topic[6], topiclist->topic[7], topiclist->topic[8],
+                topiclist->topic[9], topiclist->topic[10], topiclist->topic[11], topiclist->topic[12], topiclist->topic[13], topiclist->topic[14],
             __FILE__, __LINE__);
-        printf("topic2:%c,%c,%c,%c,%c,%c, in %s, at %d\n",
-            topic[0], topic[1], topic[2], topic[3], topic[4], topic[5], topic[6],
+        printf("topic2:%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d, in %s, at %d\n",
+            topic[0], topic[1], topic[2], topic[3], topic[4], topic[5], topic[6], topic[7], topic[8],
+            topic[9], topic[10], topic[11], topic[12], topic[13], topic[14],
              __FILE__, __LINE__);
+#endif
         if (!strcmp(topiclist->topic, topic)) {
+#ifdef DEBUG
             printf("the same\n");
+#endif
             return topiclist;
         }
         topiclist = topiclist->tail;
@@ -77,24 +85,70 @@ void addtsdatatobuff (struct TOPICLIST *topiclist, const char *data, size_t len)
     memcpy(topiclist->tsdatabuff + topiclist->buffusesize, data, len);
     topiclist->buffusesize += len;
     if (topiclist->buffusesize > TSDATABUFFSIZE / 2) { //缓存足够，开始生成ts文件
+#ifdef DEBUG
         printf("in %s, at %d\n", __FILE__, __LINE__);
+#endif
         char *file = topiclist->tsdatabuff;
-        int endpoint;
-        for (int pos = 0 ; pos < topiclist->buffusesize ; pos += 188) {
+        if (file[0] != 0x47) {
+            size_t realhead = -1;
+            for (size_t pos = 0 ; pos < topiclist->buffusesize ; pos ++) {
+                if (file[pos] == 0x47) {
+                    realhead = pos;
+                    break;
+                }
+            }
+            if (realhead == -1) {
+#ifdef DEBUG
+                printf("package is bad,in %s, at %d\n", __FILE__, __LINE__);
+#endif
+                topiclist->buffusesize = 0;
+                return;
+            }
+            topiclist->buffusesize -= realhead;
+            if (topiclist->buffusesize < realhead) {
+#ifdef DEBUG
+                printf("in %s, at %d\n", __FILE__, __LINE__);
+#endif
+                memcpy(topiclist->tsdatabuff, topiclist->tsdatabuff + realhead, topiclist->buffusesize);
+            } else {
+#ifdef DEBUG
+                printf("in %s, at %d\n", __FILE__, __LINE__);
+#endif
+                for (size_t pos = 0 ; pos < topiclist->buffusesize ; pos++) {
+                    topiclist->tsdatabuff[pos] = topiclist->tsdatabuff[pos+realhead];
+                }
+            }
+        }
+        size_t endpoint;
+        for (size_t pos = 0 ; pos < topiclist->buffusesize ; pos += 188) {
+            if (file[pos] != 0x47) {
+#ifdef DEBUG
+                printf("package is bad,in %s, at %d\n", __FILE__, __LINE__);
+#endif
+                topiclist->buffusesize = 0;
+                return;
+            }
             if (file[pos+1] == 0x40 && file[pos+2] == 0x00 && (file[pos+10] & 0x01)) { // 寻找ts结构中的pat包
                 endpoint = pos;
             }
         }
         struct TSDATALIST *tsdatalist = (struct TSDATALIST*)malloc(sizeof(struct TSDATALIST));
-        tsdatalist->id = topiclist->tsdatastep;
+        tsdatalist->id = topiclist->tsdatastep & 0xffff;
         tsdatalist->data = (char*)malloc(endpoint);
         memcpy(tsdatalist->data, topiclist->tsdatabuff, endpoint);
         tsdatalist->len = endpoint;
         tsdatalist->tail = NULL;
-        topiclist->tsdatastep++;
-        if (topiclist->tsdatastep & 0x8000) { // 大于32768就重新设置为0
-            topiclist->tsdatastep = 0;
+#ifdef SAVEFILE
+        char filename[64];
+        if (access("store", F_OK) == 0) {
+            mkdir ("store", 0777);
         }
+        sprintf(filename, "store/%s-%04x.ts", topiclist->topic + 1, tsdatalist->id);
+        int fd = open(filename, O_WRONLY|O_CREAT|O_TRUNC, 0777);
+        write(fd, tsdatalist->data, endpoint);
+        close (fd);
+#endif
+        topiclist->tsdatastep++;
         if (topiclist->tsdatanum == 0) {
             topiclist->tsdatalisthead = tsdatalist;
             topiclist->tsdatalistdesc = topiclist->tsdatalisthead;
@@ -119,15 +173,32 @@ void addtsdatatobuff (struct TOPICLIST *topiclist, const char *data, size_t len)
             topiclist->tsdatalisttail = topiclist->tsdatalisttail->tail;
         }
         topiclist->buffusesize -= endpoint;
-        memcpy(topiclist->tsdatabuff, topiclist->tsdatabuff + endpoint, topiclist->buffusesize);
+        if (topiclist->buffusesize < endpoint) {
+#ifdef DEBUG
+            printf("in %s, at %d\n", __FILE__, __LINE__);
+#endif
+            memcpy(topiclist->tsdatabuff, topiclist->tsdatabuff + endpoint, topiclist->buffusesize);
+        } else {
+#ifdef DEBUG
+            printf("in %s, at %d\n", __FILE__, __LINE__);
+#endif
+            for (size_t pos = 0 ; pos < topiclist->buffusesize ; pos++) {
+                topiclist->tsdatabuff[pos] = topiclist->tsdatabuff[pos+endpoint];
+            }
+        }
     }
 }
 
-#define EXTM3UHEAD   "#EXTM3U\r#EXT-X-VERSION:3\r#EXT-X-TARGETDURATION:10\r#EXT-X-MEDIA-SEQUENCE:0\r"
-#define EXTM3UDATA   "#EXTINF:1.000000,\r%s-%04x.ts\r"
+#define EXTM3UHEAD   "#EXTM3U\r#EXT-X-VERSION:3\r#EXT-X-TARGETDURATION:1\r#EXT-X-MEDIA-SEQUENCE:"
+#define EXTM3UFILE   "#EXTINF:1.000000,"
+#define HTTPPROTOC   "http://"
+#define EXTM3UDATA   EXTM3UFILE"\r"HTTPPROTOC"%s%s-%04x.ts\r"
 #define EXTM3UFOOT   "#EXT-X-ENDLIST\r"
 
-char *createm3u8file (char *topic, size_t* len) {
+char *createm3u8file (char *topic, char* httphost, size_t httphostlen, size_t* len) {
+#ifdef DEBUG
+    printf("in %s, at %d\n", __FILE__, __LINE__);
+#endif
     struct TOPICLIST *topiclist = gettopiclist (topic);
     if (topiclist == NULL || topiclist->tsdatanum < 5) {
         char *html = (char*)malloc(sizeof(EXTM3UHEAD""EXTM3UFOOT));
@@ -135,33 +206,41 @@ char *createm3u8file (char *topic, size_t* len) {
         *len = sizeof(EXTM3UHEAD""EXTM3UFOOT) - 1;
         return html;
     }
-    char *html = (char*)malloc(sizeof(EXTM3UHEAD""EXTM3UFOOT) + 5*(sizeof("#EXTINF:1.000000,") - 1 + topiclist->topicsize - 1 + 1 + 4 + 3 + 2)); // #EXTINF:1.000000,的长度+topic的长度+间隔符长度+id的长度+".ts"的长度+换行
+    size_t size = sizeof(EXTM3UHEAD) + 5 + 1 + 5*(sizeof(EXTM3UFILE) - 1 + 1 + sizeof(HTTPPROTOC) - 1 + httphostlen - 1 + topiclist->topicsize - 1 + 1 + 4 + 3 + 1);
+#ifdef DEBUG
+    printf("size:%d,in %s, at %d\n", size, __FILE__, __LINE__);
+#endif
+    char *html = (char*)malloc(size); // #EXTINF:1.000000,的长度+换行+http://的长度 + http_host的长度 + topic的长度 + 间隔符长度 + id的长度 + ".ts"的长度 + 换行
     struct TSDATALIST *tsdatalist1 = topiclist->tsdatalistdesc;
     struct TSDATALIST *tsdatalist2 = tsdatalist1->tail;
     struct TSDATALIST *tsdatalist3 = tsdatalist2->tail;
     struct TSDATALIST *tsdatalist4 = tsdatalist3->tail;
     struct TSDATALIST *tsdatalist5 = tsdatalist4->tail;
-    *len = sprintf(html, EXTM3UHEAD""EXTM3UDATA""EXTM3UDATA""EXTM3UDATA""EXTM3UDATA""EXTM3UDATA""EXTM3UFOOT,
-            topic+1, tsdatalist1->id,
-            topic+1, tsdatalist2->id,
-            topic+1, tsdatalist3->id,
-            topic+1, tsdatalist4->id,
-            topic+1, tsdatalist5->id
+    *len = sprintf(html, EXTM3UHEAD"%u\r"EXTM3UDATA""EXTM3UDATA""EXTM3UDATA""EXTM3UDATA""EXTM3UDATA,
+            topiclist->tsdatastep - 5,
+            httphost, topic, tsdatalist1->id,
+            httphost, topic, tsdatalist2->id,
+            httphost, topic, tsdatalist3->id,
+            httphost, topic, tsdatalist4->id,
+            httphost, topic, tsdatalist5->id
         );
+#ifdef DEBUG
+    printf("len:%d,in %s, at %d\n", *len, __FILE__, __LINE__);
+#endif
     return html;
 }
 
 char *gettsfile (char *topic, int id, size_t *len) {
-    printf("in %s, at %d\n", id, __FILE__, __LINE__);
     struct TOPICLIST *topiclist = gettopiclist (topic);
     if (topiclist == NULL) {
-        printf("id:%04x, in %s, at %d\n", id, __FILE__, __LINE__);
         *len = 0;
         return NULL;
     }
     struct TSDATALIST* tsdatalist = topiclist->tsdatalisthead;
     while (tsdatalist != NULL) {
+#ifdef DEBUG
         printf("id:%04x, in %s, at %d\n", id, __FILE__, __LINE__);
+#endif
         if (tsdatalist->id == id) {
             *len = tsdatalist->len;
             return tsdatalist->data;
