@@ -44,6 +44,7 @@ struct TOPICLIST *addtopictolist (const char* topic) {
     topiclist->topicsize = len;
     topiclist->buffusesize = 0;
     topiclist->tsdatalisthead = NULL;
+    topiclist->tsdatalistdesc = NULL;
     topiclist->tsdatalisttail = NULL;
     topiclist->tsdatanum = 0;
     topiclist->tsdatastep = 0;
@@ -154,9 +155,15 @@ void createtsfile () {
         topiclist->tsdatastep++;
         if (topiclist->tsdatanum == 0) {
             topiclist->tsdatalisthead = tsdatalist;
+            topiclist->tsdatalistdesc = topiclist->tsdatalisthead;
             topiclist->tsdatalisttail = topiclist->tsdatalisthead;
             topiclist->tsdatanum++;
-        } else if (topiclist->tsdatanum == 1) {
+        } else if (topiclist->tsdatanum < 3) {
+            topiclist->tsdatalisttail->tail = tsdatalist;
+            topiclist->tsdatalisttail = topiclist->tsdatalisttail->tail;
+            topiclist->tsdatanum++;
+        } else if (topiclist->tsdatanum < 6) {
+            topiclist->tsdatalistdesc = topiclist->tsdatalistdesc->tail;
             topiclist->tsdatalisttail->tail = tsdatalist;
             topiclist->tsdatalisttail = topiclist->tsdatalisttail->tail;
             topiclist->tsdatanum++;
@@ -165,6 +172,7 @@ void createtsfile () {
             topiclist->tsdatalisthead = topiclist->tsdatalisthead->tail;
             free(tmp->data);
             free(tmp);
+            topiclist->tsdatalistdesc = topiclist->tsdatalistdesc->tail;
             topiclist->tsdatalisttail->tail = tsdatalist;
             topiclist->tsdatalisttail = topiclist->tsdatalisttail->tail;
         }
@@ -195,20 +203,25 @@ char *createm3u8file (char *topic, char* httphost, size_t httphostlen, size_t* l
     printf("in %s, at %d\n", __FILE__, __LINE__);
 #endif
     struct TOPICLIST *topiclist = gettopiclist (topic);
-    if (topiclist == NULL || topiclist->tsdatanum < 2) {
+    if (topiclist == NULL || topiclist->tsdatanum < 3) {
         char *html = (char*)malloc(sizeof(EXTM3UHEAD"0\r"EXTM3UFOOT));
         strcpy(html, EXTM3UHEAD"0\r"EXTM3UFOOT);
         *len = sizeof(EXTM3UHEAD"0\r"EXTM3UFOOT) - 1;
         return html;
     }
-    size_t size = sizeof(EXTM3UHEAD) - 1 + 20  + 1 + sizeof(EXTM3UDATA) - 1 + 6 + httphostlen - 1 + topiclist->topicsize - 1 + 1 ;
+    size_t size = sizeof(EXTM3UHEAD) - 1 + 20  + 1 + 4*(sizeof(EXTM3UDATA) - 1 + 6 + httphostlen - 1 + topiclist->topicsize - 1) + 1 ;
 #ifdef DEBUG
     printf("size:%d,in %s, at %d\n", size, __FILE__, __LINE__);
 #endif
+    struct TSDATALIST* tsdatalist0 = topiclist->tsdatalistdesc;
+    struct TSDATALIST* tsdatalist1 = tsdatalist0->tail;
+    struct TSDATALIST* tsdatalist2 = tsdatalist1->tail;
     char *html = (char*)malloc(size);
-    *len = sprintf(html, EXTM3UHEAD"%u\r"EXTM3UDATA"%s%s-%x.ts\r",
-            topiclist->tsdatastep - 1,
-            httphost, topic, topiclist->tsdatalisttail->id
+    *len = sprintf(html, EXTM3UHEAD"%u\r"EXTM3UDATA"%s%s-%x.ts\r"EXTM3UDATA"%s%s-%x.ts\r"EXTM3UDATA"%s%s-%x.ts\r",
+            topiclist->tsdatastep - 3,
+            httphost, topic, tsdatalist0->id,
+            httphost, topic, tsdatalist1->id,
+            httphost, topic, tsdatalist2->id
         );
 #ifdef DEBUG
     printf("len:%d,in %s, at %d\n", *len, __FILE__, __LINE__);

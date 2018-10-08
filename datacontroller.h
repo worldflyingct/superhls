@@ -1,7 +1,7 @@
 #ifndef __DATACONTROLLER_H__
 #define __DATACONTROLLER_H__
 
-#define TSDATABUFFSIZE   2*1024*1024
+#define TSDATABUFFSIZE   512*1024
 
 struct TSDATALIST {
     size_t id;
@@ -16,6 +16,7 @@ struct TOPICLIST {
     char tsdatabuff[TSDATABUFFSIZE];
     size_t buffusesize; // 这里记录有多少的tsdatabuff已经被使用
     struct TSDATALIST* tsdatalisthead;
+    struct TSDATALIST* tsdatalistdesc;
     struct TSDATALIST* tsdatalisttail;
     size_t tsdatanum;
     size_t tsdatastep;

@@ -62,7 +62,6 @@ int connectionHandler(void *cls,
             MHD_add_response_header(response, "Access-Control-Allow-Headers", "*");
         }
     } else {
-        printf("url:%s, in %s, at %d\n", url, __FILE__, __LINE__);
 #ifdef DEBUG
         printf("url:%s, in %s, at %d\n", url, __FILE__, __LINE__);
 #endif
@@ -118,8 +117,8 @@ int connectionHandler(void *cls,
 int main(int argc, char *argv[]) {
     signal(SIGALRM, createtsfile);
     struct itimerval itv;
-    itv.it_value.tv_sec = itv.it_interval.tv_sec = 1;
-    itv.it_value.tv_usec = itv.it_interval.tv_usec = 0;
+    itv.it_value.tv_sec = itv.it_interval.tv_sec = 0;
+    itv.it_value.tv_usec = itv.it_interval.tv_usec = 333333;
     setitimer(ITIMER_REAL, &itv, NULL);
     struct MHD_Daemon *daemon = MHD_start_daemon(MHD_USE_EPOLL_INTERNALLY, 8001, NULL, NULL, &connectionHandler, NULL, MHD_OPTION_END);
     if (daemon == NULL) {
