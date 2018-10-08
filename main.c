@@ -62,6 +62,7 @@ int connectionHandler(void *cls,
             MHD_add_response_header(response, "Access-Control-Allow-Headers", "*");
         }
     } else {
+        printf("url:%s, in %s, at %d\n", url, __FILE__, __LINE__);
 #ifdef DEBUG
         printf("url:%s, in %s, at %d\n", url, __FILE__, __LINE__);
 #endif

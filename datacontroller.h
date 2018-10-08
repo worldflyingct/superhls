@@ -16,7 +16,6 @@ struct TOPICLIST {
     char tsdatabuff[TSDATABUFFSIZE];
     size_t buffusesize; // 这里记录有多少的tsdatabuff已经被使用
     struct TSDATALIST* tsdatalisthead;
-    struct TSDATALIST* tsdatalistdesc;
     struct TSDATALIST* tsdatalisttail;
     size_t tsdatanum;
     size_t tsdatastep;
