@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 #include <microhttpd.h>
 #include "datacontroller.h"
 
@@ -61,39 +62,23 @@ int connectionHandler(void *cls,
             MHD_add_response_header(response, "Access-Control-Allow-Headers", "*");
         }
     } else {
-        printf("url:%s, in %s, at %d\n", url, __FILE__, __LINE__);
 #ifdef DEBUG
         printf("url:%s, in %s, at %d\n", url, __FILE__, __LINE__);
 #endif
         size_t size = strlen(url);
         if (!strcmp(url + size-3, ".ts")) {
-            char *topic = (char*)malloc(size-7); // "-xxxx.ts"共8个字符,不减8只减7是为了\0
-            memcpy(topic, url, size-8);
-            topic[size-8] = '\0';
-            int id = 0;
+            char *topic = (char*)malloc(size-4); // "-x.ts"共5个字符,不减5只减4是为了\0
+            memcpy(topic, url, size-5);
+            topic[size-5] = '\0';
+            size_t id;
             if('a' <= url[size-4] && url[size-4] <= 'f') {
-                id += url[size-4] - 'a' + 10;
+                id = url[size-4] - 'a' + 10;
             } else {
-                id += url[size-4] - '0';
-            }
-            if('a' <= url[size-5] && url[size-5] <= 'f') {
-                id += (url[size-5] - 'a' + 10) << 4;
-            } else {
-                id += (url[size-5] - '0') << 4;
-            }
-            if('a' <= url[size-6] && url[size-6] <= 'f') {
-                id += (url[size-6] - 'a' + 10) << 8;
-            } else {
-                id += (url[size-6] - '0') << 8;
-            }
-            if('a' <= url[size-7] && url[size-7] <= 'f') {
-                id += (url[size-7] - 'a' + 10) << 12;
-            } else {
-                id += (url[size-7] - '0') << 12;
+                id = url[size-4] - '0';
             }
             size_t len;
 #ifdef DEBUG
-            printf("topic:%s,id:%04x, in %s, at %d\n", topic, id, __FILE__, __LINE__);
+            printf("topic:%s,id:%02x, in %s, at %d\n", topic, id, __FILE__, __LINE__);
 #endif
             char *html = gettsfile (topic, id, &len);
             free (topic);
@@ -130,6 +115,11 @@ int connectionHandler(void *cls,
 }
 
 int main(int argc, char *argv[]) {
+    signal(SIGALRM, createtsfile);
+    struct itimerval itv;
+    itv.it_value.tv_sec = itv.it_interval.tv_sec = 1;
+    itv.it_value.tv_usec = itv.it_interval.tv_usec = 0;
+    setitimer(ITIMER_REAL, &itv, NULL);
     struct MHD_Daemon *daemon = MHD_start_daemon(MHD_USE_EPOLL_INTERNALLY, 8001, NULL, NULL, &connectionHandler, NULL, MHD_OPTION_END);
     if (daemon == NULL) {
         printf("run http server fail, in %s, at %d\n", __FILE__, __LINE__);

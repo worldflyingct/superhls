@@ -84,7 +84,11 @@ void removetopicfromlist (struct TOPICLIST *topiclist) {
 void addtsdatatobuff (struct TOPICLIST *topiclist, const char *data, size_t len) {
     memcpy(topiclist->tsdatabuff + topiclist->buffusesize, data, len);
     topiclist->buffusesize += len;
-    if (topiclist->buffusesize > TSDATABUFFSIZE / 2) { //缓存足够，开始生成ts文件
+}
+
+void createtsfile () {
+    struct TOPICLIST *topiclist = topiclisthead;
+    while (topiclist != NULL) {
 #ifdef DEBUG
         printf("in %s, at %d\n", __FILE__, __LINE__);
 #endif
@@ -102,7 +106,7 @@ void addtsdatatobuff (struct TOPICLIST *topiclist, const char *data, size_t len)
                 printf("package is bad,in %s, at %d\n", __FILE__, __LINE__);
 #endif
                 topiclist->buffusesize = 0;
-                return;
+                continue;
             }
             topiclist->buffusesize -= realhead;
             if (topiclist->buffusesize < realhead) {
@@ -126,14 +130,14 @@ void addtsdatatobuff (struct TOPICLIST *topiclist, const char *data, size_t len)
                 printf("package is bad,in %s, at %d\n", __FILE__, __LINE__);
 #endif
                 topiclist->buffusesize = 0;
-                return;
+                continue;
             }
             if (file[pos+1] == 0x40 && file[pos+2] == 0x00 && (file[pos+10] & 0x01)) { // 寻找ts结构中的pat包
                 endpoint = pos;
             }
         }
         struct TSDATALIST *tsdatalist = (struct TSDATALIST*)malloc(sizeof(struct TSDATALIST));
-        tsdatalist->id = topiclist->tsdatastep & 0xffff;
+        tsdatalist->id = topiclist->tsdatastep & 0x0f;
         tsdatalist->data = (char*)malloc(endpoint);
         memcpy(tsdatalist->data, topiclist->tsdatabuff, endpoint);
         tsdatalist->len = endpoint;
@@ -154,11 +158,11 @@ void addtsdatatobuff (struct TOPICLIST *topiclist, const char *data, size_t len)
             topiclist->tsdatalistdesc = topiclist->tsdatalisthead;
             topiclist->tsdatalisttail = topiclist->tsdatalisthead;
             topiclist->tsdatanum++;
-        } else if (topiclist->tsdatanum < 5) {
+        } else if (topiclist->tsdatanum < 2) {
             topiclist->tsdatalisttail->tail = tsdatalist;
             topiclist->tsdatalisttail = topiclist->tsdatalisttail->tail;
             topiclist->tsdatanum++;
-        } else if (topiclist->tsdatanum < 256) {
+        } else if (topiclist->tsdatanum < 4) {
             topiclist->tsdatalistdesc = topiclist->tsdatalistdesc->tail;
             topiclist->tsdatalisttail->tail = tsdatalist;
             topiclist->tsdatalisttail = topiclist->tsdatalisttail->tail;
@@ -186,13 +190,12 @@ void addtsdatatobuff (struct TOPICLIST *topiclist, const char *data, size_t len)
                 topiclist->tsdatabuff[pos] = topiclist->tsdatabuff[pos+endpoint];
             }
         }
+        topiclist = topiclist->tail;
     }
 }
 
 #define EXTM3UHEAD   "#EXTM3U\r#EXT-X-VERSION:3\r#EXT-X-TARGETDURATION:1\r#EXT-X-MEDIA-SEQUENCE:"
-#define EXTM3UFILE   "#EXTINF:1.000000,"
-#define HTTPPROTOC   "http://"
-#define EXTM3UDATA   EXTM3UFILE"\r"HTTPPROTOC"%s%s-%04x.ts\r"
+#define EXTM3UDATA   "#EXTINF:1.000000,\rhttp://"
 #define EXTM3UFOOT   "#EXT-X-ENDLIST\r"
 
 char *createm3u8file (char *topic, char* httphost, size_t httphostlen, size_t* len) {
@@ -200,29 +203,23 @@ char *createm3u8file (char *topic, char* httphost, size_t httphostlen, size_t* l
     printf("in %s, at %d\n", __FILE__, __LINE__);
 #endif
     struct TOPICLIST *topiclist = gettopiclist (topic);
-    if (topiclist == NULL || topiclist->tsdatanum < 5) {
-        char *html = (char*)malloc(sizeof(EXTM3UHEAD""EXTM3UFOOT));
-        strcpy(html, EXTM3UHEAD""EXTM3UFOOT);
-        *len = sizeof(EXTM3UHEAD""EXTM3UFOOT) - 1;
+    if (topiclist == NULL || topiclist->tsdatanum < 2) {
+        char *html = (char*)malloc(sizeof(EXTM3UHEAD"0\r"EXTM3UFOOT));
+        strcpy(html, EXTM3UHEAD"0\r"EXTM3UFOOT);
+        *len = sizeof(EXTM3UHEAD"0\r"EXTM3UFOOT) - 1;
         return html;
     }
-    size_t size = sizeof(EXTM3UHEAD) + 5 + 1 + 5*(sizeof(EXTM3UFILE) - 1 + 1 + sizeof(HTTPPROTOC) - 1 + httphostlen - 1 + topiclist->topicsize - 1 + 1 + 4 + 3 + 1);
+    size_t size = sizeof(EXTM3UHEAD) - 1 + 20  + 1 + 2*(sizeof(EXTM3UDATA) - 1 + 6 + httphostlen - 1 + topiclist->topicsize - 1) + 1 ;
 #ifdef DEBUG
     printf("size:%d,in %s, at %d\n", size, __FILE__, __LINE__);
 #endif
-    char *html = (char*)malloc(size); // #EXTINF:1.000000,的长度+换行+http://的长度 + http_host的长度 + topic的长度 + 间隔符长度 + id的长度 + ".ts"的长度 + 换行
-    struct TSDATALIST *tsdatalist1 = topiclist->tsdatalistdesc;
-    struct TSDATALIST *tsdatalist2 = tsdatalist1->tail;
-    struct TSDATALIST *tsdatalist3 = tsdatalist2->tail;
-    struct TSDATALIST *tsdatalist4 = tsdatalist3->tail;
-    struct TSDATALIST *tsdatalist5 = tsdatalist4->tail;
-    *len = sprintf(html, EXTM3UHEAD"%u\r"EXTM3UDATA""EXTM3UDATA""EXTM3UDATA""EXTM3UDATA""EXTM3UDATA,
-            topiclist->tsdatastep - 5,
-            httphost, topic, tsdatalist1->id,
-            httphost, topic, tsdatalist2->id,
-            httphost, topic, tsdatalist3->id,
-            httphost, topic, tsdatalist4->id,
-            httphost, topic, tsdatalist5->id
+    struct TSDATALIST* tsdatalist0 = topiclist->tsdatalistdesc;
+    struct TSDATALIST* tsdatalist1 = tsdatalist0->tail;
+    char *html = (char*)malloc(size);
+    *len = sprintf(html, EXTM3UHEAD"%u\r"EXTM3UDATA"%s%s-%x.ts\r"EXTM3UDATA"%s%s-%x.ts\r",
+            topiclist->tsdatastep - 2,
+            httphost, topic, tsdatalist0->id,
+            httphost, topic, tsdatalist1->id
         );
 #ifdef DEBUG
     printf("len:%d,in %s, at %d\n", *len, __FILE__, __LINE__);
@@ -230,7 +227,7 @@ char *createm3u8file (char *topic, char* httphost, size_t httphostlen, size_t* l
     return html;
 }
 
-char *gettsfile (char *topic, int id, size_t *len) {
+char *gettsfile (char *topic, size_t id, size_t *len) {
     struct TOPICLIST *topiclist = gettopiclist (topic);
     if (topiclist == NULL) {
         *len = 0;
