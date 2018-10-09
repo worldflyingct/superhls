@@ -27,7 +27,6 @@ struct CONFIG* initconfig () {
         json_object_set_new(obj, "http_host", json_string("http://localhost"));
         json_object_set_new(obj, "tsdatabuffsize", json_integer(1024*1024));
         json_object_set_new(obj, "tstimelong", json_integer(666666));
-        json_object_set_new(obj, "savefile", json_boolean(JSON_FALSE));
         json_dump_file(obj, "config.json", 0);
         json_decref(obj);
         config.httphost = "http://localhost";
