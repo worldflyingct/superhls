@@ -43,9 +43,6 @@ int connectionHandler(void *cls,
                 *ptr = topiclist;
                 return MHD_YES;
             } else {
-#ifdef DEBUG
-                printf("topic exist, in %s, at %d\n", __FILE__, __LINE__);
-#endif
                 response = MHD_create_response_from_buffer(sizeof(TOPICCONFLICT)-1, TOPICCONFLICT, MHD_RESPMEM_PERSISTENT);
                 MHD_add_response_header(response, "Content-Type", "text/plain");
             }
@@ -67,24 +64,13 @@ int connectionHandler(void *cls,
 #endif
         size_t size = strlen(url);
         if (!strcmp(url + size-3, ".ts")) {
-            char *topic = (char*)malloc(size-4); // "-x.ts"共5个字符,不减5只减4是为了\0
-            memcpy(topic, url, size-5);
-            topic[size-5] = '\0';
-            size_t id;
-            if('a' <= url[size-4] && url[size-4] <= 'f') {
-                id = url[size-4] - 'a' + 10;
-            } else {
-                id = url[size-4] - '0';
-            }
+            char *topic = (char*)malloc(size-3); // "x.ts"共4个字符,不减4只减3是为了\0
+            memcpy(topic, url, size-4);
+            topic[size-4] = '\0';
+            size_t id = url[size-4] - '0';
             size_t len;
-#ifdef DEBUG
-            printf("topic:%s,id:%02x, in %s, at %d\n", topic, id, __FILE__, __LINE__);
-#endif
             char *html = gettsfile (topic, id, &len);
             free (topic);
-#ifdef DEBUG
-            printf("len:%d, in %s, at %d\n", len, __FILE__, __LINE__);
-#endif
             response = MHD_create_response_from_buffer(len, html, MHD_RESPMEM_PERSISTENT);
             MHD_add_response_header(response, "Content-Type", "video/mp2t");
         } else if (!strcmp(url + size-5, ".m3u8")) {
@@ -101,9 +87,6 @@ int connectionHandler(void *cls,
             response = MHD_create_response_from_buffer(len, html, MHD_RESPMEM_MUST_FREE);
             MHD_add_response_header(response, "Content-Type", "application/vnd.apple.mpegurl");
         } else {
-#ifdef DEBUG
-            printf("in %s, at %d\n", __FILE__, __LINE__);
-#endif
             response = MHD_create_response_from_buffer(sizeof(INSTRUCTION)-1, INSTRUCTION, MHD_RESPMEM_PERSISTENT);
             MHD_add_response_header(response, "Content-Type", "text/plain");
         }
