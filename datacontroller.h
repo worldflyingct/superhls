@@ -1,8 +1,6 @@
 #ifndef __DATACONTROLLER_H__
 #define __DATACONTROLLER_H__
 
-#define TSDATABUFFSIZE   1024*1024
-
 struct TSDATALIST {
     size_t id;
     char* data;
@@ -12,14 +10,16 @@ struct TSDATALIST {
 
 struct TOPICLIST {
     char* topic;
-    size_t topicsize;
-    char tsdatabuff[TSDATABUFFSIZE];
+    size_t topiclen;
+    char* tsdatabuff;
     size_t buffusesize; // 这里记录有多少的tsdatabuff已经被使用
     struct TSDATALIST* tsdatalisthead;
     struct TSDATALIST* tsdatalistdesc;
     struct TSDATALIST* tsdatalisttail;
     size_t tsdatanum;
     unsigned int tsdatastep;
+    char* m3u8;
+    size_t m3u8len;
     struct TOPICLIST* head;
     struct TOPICLIST* tail;
 };
@@ -28,7 +28,7 @@ struct TOPICLIST *gettopiclist (const char* topic);
 struct TOPICLIST *addtopictolist (const char* topic);
 void removetopicfromlist (struct TOPICLIST *topiclist);
 void addtsdatatobuff (struct TOPICLIST *topiclist, const char *data, size_t len);
-char *createm3u8file (char *topic, size_t* len);
+char *getm3u8file (char *topic, size_t* len);
 char *gettsfile (char *topic, size_t id, size_t *len);
 void createtsfile ();
 

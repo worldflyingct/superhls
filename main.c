@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include "datacontroller.h"
+#include "config.h"
 
 #define INSTRUCTION    "This is jsmpegserver, power by https://www.worldflying.cn, if you have some question, you can send a email to jevian_ma@worldflying.cn"
 #define TOPICCONFLICT  "{\"errcode\":-1, \"errmsg\":\"topic exist\"}"
@@ -44,7 +45,7 @@ int connectionHandler(void *cls,
             MHD_add_response_header(response, "Access-Control-Allow-Headers", "*");
         }
     } else {
-        printf("url:%s, in %s, at %d\n", url, __FILE__, __LINE__);
+        printf("url:%s, thread id:%d, in %s, at %d\n", url, getpid(), __FILE__, __LINE__);
         size_t size = strlen(url);
         if (!strcmp(url + size-3, ".ts")) {
             char *topic = (char*)malloc(size-3); // "x.ts"共4个字符,不减4只减3是为了\0
@@ -61,9 +62,9 @@ int connectionHandler(void *cls,
             memcpy(topic, url, size-5);
             topic[size-5] = '\0';
             size_t len;
-            char *html = createm3u8file (topic, &len);
+            char *html = getm3u8file (topic, &len);
             free (topic);
-            response = MHD_create_response_from_buffer(len, html, MHD_RESPMEM_MUST_FREE);
+            response = MHD_create_response_from_buffer(len, html, MHD_RESPMEM_PERSISTENT);
             MHD_add_response_header(response, "Content-Type", "application/vnd.apple.mpegurl");
         } else {
             response = MHD_create_response_from_buffer(sizeof(INSTRUCTION)-1, INSTRUCTION, MHD_RESPMEM_PERSISTENT);
@@ -77,10 +78,11 @@ int connectionHandler(void *cls,
 }
 
 int main(int argc, char *argv[]) {
+    struct CONFIG* config = initconfig ();
     signal(SIGALRM, createtsfile);
     struct itimerval itv;
     itv.it_value.tv_sec = itv.it_interval.tv_sec = 0;
-    itv.it_value.tv_usec = itv.it_interval.tv_usec = 666666;
+    itv.it_value.tv_usec = itv.it_interval.tv_usec = config->tstimelong;
     setitimer(ITIMER_REAL, &itv, NULL);
     struct MHD_Daemon *daemon = MHD_start_daemon(MHD_USE_EPOLL_INTERNALLY, 8001, NULL, NULL, &connectionHandler, NULL, MHD_OPTION_END);
     if (daemon == NULL) {

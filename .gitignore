@@ -3,4 +3,5 @@ superhlsserver
 .vscode
 store
 fifo
+config.json
 
