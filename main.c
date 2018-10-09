@@ -45,7 +45,6 @@ int connectionHandler(void *cls,
             MHD_add_response_header(response, "Access-Control-Allow-Headers", "*");
         }
     } else {
-        printf("url:%s, thread id:%d, in %s, at %d\n", url, getpid(), __FILE__, __LINE__);
         size_t size = strlen(url);
         if (!strcmp(url + size-3, ".ts")) {
             char *topic = (char*)malloc(size-3); // "x.ts"共4个字符,不减4只减3是为了\0
