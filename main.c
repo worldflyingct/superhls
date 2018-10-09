@@ -3,6 +3,8 @@
 #include <string.h>
 #include <signal.h>
 #include <microhttpd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 #include "datacontroller.h"
 
 #define INSTRUCTION    "This is jsmpegserver, power by https://www.worldflying.cn, if you have some question, you can send a email to jevian_ma@worldflying.cn"
@@ -108,7 +110,20 @@ int main(int argc, char *argv[]) {
         printf("run http server fail, in %s, at %d\n", __FILE__, __LINE__);
         return -1;
     }
-    getchar();
+    if (access("fifo", F_OK) != 0) {
+        mkfifo("fifo", 0777);
+    }
+    char* fifobuf = (char*)malloc(16);
+    while (1) {
+        int fd = open("fifo", O_RDONLY);
+        read (fd, fifobuf, 16);
+        if (!strncmp (fifobuf, "exit\n", 5)) {
+            close (fd);
+            break;
+        }
+        close (fd);
+    }
+    free (fifobuf);
     MHD_stop_daemon(daemon);
     return 0;
 }
