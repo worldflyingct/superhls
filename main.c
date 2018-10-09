@@ -11,23 +11,6 @@
 #define TOPICCONFLICT  "{\"errcode\":-1, \"errmsg\":\"topic exist\"}"
 #define TRANSFERFINISH "{\"errcode\":0, \"errmsg\":\transfer finish\"}"
 
-struct STRING {
-    char *string;
-    size_t len;
-};
-
-int kv_cb (void *cls, enum MHD_ValueKind kind, const char *key, const char *value) {
-    if (!strcmp (key, MHD_HTTP_HEADER_HOST) && kind == MHD_HEADER_KIND) {
-        struct STRING* string = (struct STRING*)malloc(sizeof(struct STRING));
-        string->len = strlen(value) + 1;
-        string->string = (char*)malloc(string->len);
-        strcpy(string->string, value);
-        *((struct STRING**)cls) = string;
-        return MHD_YES;
-    }
-    return MHD_NO;  
-}
-
 int connectionHandler(void *cls,
             struct MHD_Connection *connection,
             const char *url,
@@ -61,9 +44,7 @@ int connectionHandler(void *cls,
             MHD_add_response_header(response, "Access-Control-Allow-Headers", "*");
         }
     } else {
-#ifdef DEBUG
         printf("url:%s, in %s, at %d\n", url, __FILE__, __LINE__);
-#endif
         size_t size = strlen(url);
         if (!strcmp(url + size-3, ".ts")) {
             char *topic = (char*)malloc(size-3); // "x.ts"共4个字符,不减4只减3是为了\0
@@ -76,16 +57,12 @@ int connectionHandler(void *cls,
             response = MHD_create_response_from_buffer(len, html, MHD_RESPMEM_PERSISTENT);
             MHD_add_response_header(response, "Content-Type", "video/mp2t");
         } else if (!strcmp(url + size-5, ".m3u8")) {
-            struct STRING* httphost;
-            MHD_get_connection_values (connection, MHD_HEADER_KIND, &kv_cb, &httphost);
-            char *topic = (char*)malloc(size-4); // 不减5只减4是为了\0
+            char *topic = (char*)malloc(size-4); // ".m3u8"共4个字符,不减5只减4是为了\0
             memcpy(topic, url, size-5);
             topic[size-5] = '\0';
             size_t len;
-            char *html = createm3u8file (topic, httphost->string, httphost->len, &len);
+            char *html = createm3u8file (topic, &len);
             free (topic);
-            free (httphost->string);
-            free (httphost);
             response = MHD_create_response_from_buffer(len, html, MHD_RESPMEM_MUST_FREE);
             MHD_add_response_header(response, "Content-Type", "application/vnd.apple.mpegurl");
         } else {

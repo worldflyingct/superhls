@@ -19,7 +19,7 @@ struct TOPICLIST {
     struct TSDATALIST* tsdatalistdesc;
     struct TSDATALIST* tsdatalisttail;
     size_t tsdatanum;
-    size_t tsdatastep;
+    unsigned int tsdatastep;
     struct TOPICLIST* head;
     struct TOPICLIST* tail;
 };
@@ -28,7 +28,7 @@ struct TOPICLIST *gettopiclist (const char* topic);
 struct TOPICLIST *addtopictolist (const char* topic);
 void removetopicfromlist (struct TOPICLIST *topiclist);
 void addtsdatatobuff (struct TOPICLIST *topiclist, const char *data, size_t len);
-char *createm3u8file (char *topic, char* httphost, size_t httphostlen, size_t* len);
+char *createm3u8file (char *topic, size_t* len);
 char *gettsfile (char *topic, size_t id, size_t *len);
 void createtsfile ();
 

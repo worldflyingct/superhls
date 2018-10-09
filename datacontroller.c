@@ -56,6 +56,8 @@ void removetopicfromlist (struct TOPICLIST *topiclist) {
     }
     if (topiclist->tail == NULL) {
         topiclisttail = topiclist->head;
+    } else {
+        topiclist->tail->head = topiclist->head;
     }
     struct TSDATALIST *tsdatalist = topiclist->tsdatalisthead;
     while (tsdatalist != NULL) {
@@ -139,16 +141,37 @@ void createtsfile () {
 #define EXTM3UDATA   "#EXTINF:0.666666,\rhttp://"
 #define EXTM3UFOOT   "#EXT-X-ENDLIST\r"
 
-char *createm3u8file (char *topic, char* httphost, size_t httphostlen, size_t* len) {
+char *createm3u8file (char *topic, size_t* len) {
     struct TOPICLIST *topiclist = gettopiclist (topic);
+    char* httphost = "192.168.88.131:8001";
+    size_t httphostlen = sizeof("192.168.88.131:8001");
     if (topiclist == NULL || topiclist->tsdatanum < 3) {
         char *html = (char*)malloc(sizeof(EXTM3UHEAD"0\r"EXTM3UFOOT));
         strcpy(html, EXTM3UHEAD"0\r"EXTM3UFOOT);
         *len = sizeof(EXTM3UHEAD"0\r"EXTM3UFOOT) - 1;
         return html;
     }
-    // sizeof(size_t)为2时最大值为65536,需5个字节表示,sizeof(size_t)为4时最大值为4294967296,需10个字节表示,sizeof(size_t)为8时最大值为18446744073709551616,需20个字节表示
-    size_t size = sizeof(EXTM3UHEAD) - 1 + 5 * sizeof(size_t) / 2  + 1 + 4*(sizeof(EXTM3UDATA) - 1 + 5 + httphostlen - 1 + topiclist->topicsize - 1) + 1 ;
+/*
+    sizeof(unsigned int)为1时最大值为2^8=256,需3个字节表示
+    sizeof(unsigned int)为2时最大值为2^16=65536,需5个字节表示
+    sizeof(unsigned int)为4时最大值为2^32=4294967296,需10个字节表示
+    sizeof(unsigned int)为8时最大值为2^64=18446744073709551616,需20个字节表示
+    sizeof(unsigned int)为16时最大值为2^128=340282366920938463463374607431768211456,需39个字节表示
+*/
+    size_t numbersize;
+    if (sizeof(unsigned int) == 1) {
+        numbersize = 3;
+    } else if (sizeof(unsigned int) == 2) {
+        numbersize = 5;
+    } else if (sizeof(unsigned int) == 4) {
+        numbersize = 10;
+    } else if (sizeof(unsigned int) == 8) {
+        numbersize = 20;
+    } else if (sizeof(unsigned int) == 16) {
+        numbersize = 39;
+    }
+    size_t size = sizeof(EXTM3UHEAD) - 1 + numbersize  + 1 + 3*(sizeof(EXTM3UDATA) - 1 + 5 + httphostlen - 1 + topiclist->topicsize - 1) + 1 ;
+    printf("size:%d,in %s, at %d\n", size, __FILE__, __LINE__);
     struct TSDATALIST* tsdatalist0 = topiclist->tsdatalistdesc;
     struct TSDATALIST* tsdatalist1 = tsdatalist0->tail;
     struct TSDATALIST* tsdatalist2 = tsdatalist1->tail;
