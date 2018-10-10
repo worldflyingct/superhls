@@ -50,7 +50,12 @@ int connectionHandler(void *cls,
             char *topic = (char*)memalloc(size-3, __FILE__, __LINE__); // "x.ts"共4个字符,不减4只减3是为了\0
             memcpy(topic, url, size-4);
             topic[size-4] = '\0';
-            size_t id = url[size-4] - '0';
+            size_t id;
+            if (url[size-4] > 'a') {
+                id = url[size-4] - 'a' + 10;
+            } else {
+                id = url[size-4] - '0';
+            }
             size_t len;
             char *html = gettsfile (topic, id, &len);
             memfree (topic);
@@ -77,11 +82,20 @@ int connectionHandler(void *cls,
 }
 
 int main(int argc, char *argv[]) {
+    int pid = fork();
+    if (pid < 0) {
+        printf("create deamon fail\n");
+        return -1;
+    } else if(pid > 0) {
+        return 0;
+    } else {
+        setsid();
+    }
     struct CONFIG* config = initconfig ();
-    signal(SIGALRM, createtsfile);
+    signal(SIGALRM, createalltsfile);
     struct itimerval itv;
-    itv.it_value.tv_sec = itv.it_interval.tv_sec = 0;
-    itv.it_value.tv_usec = itv.it_interval.tv_usec = config->tstimelong;
+    itv.it_value.tv_sec = itv.it_interval.tv_sec = 1;
+    itv.it_value.tv_usec = itv.it_interval.tv_usec = 0;
     setitimer(ITIMER_REAL, &itv, NULL);
     struct MHD_Daemon *daemon = MHD_start_daemon(MHD_USE_EPOLL_INTERNALLY, 8001, NULL, NULL, &connectionHandler, NULL, MHD_OPTION_END);
     if (daemon == NULL) {

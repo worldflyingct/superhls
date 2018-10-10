@@ -13,7 +13,7 @@ void* memalloc (size_t num, char* filename, int line) {
     void* p = (void*) malloc (num);
     if (p == NULL) {
         printf ("mem alloc fail, at %s, in %d\n", filename, line);
-        fflush (stdout);
+        exit(-1);
         return NULL;
     }
 #ifdef STOREMALLOCNUM

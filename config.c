@@ -21,7 +21,6 @@ struct CONFIG* initconfig () {
         config.httphost = httphost;
         config.httphostlen = len;
         config.tsdatabuffsize = json_integer_value(json_object_get(obj, "tsdatabuffsize"));
-        config.tstimelong = json_integer_value(json_object_get(obj, "tstimelong"));
         json_decref(obj);
     } else {
         json_t *obj = json_object();
@@ -33,7 +32,6 @@ struct CONFIG* initconfig () {
         config.httphost = "http://localhost";
         config.httphostlen = sizeof("http://localhost") - 1;
         config.tsdatabuffsize = 512*1024;
-        config.tstimelong = 666666;
     }
     return &config;
 }

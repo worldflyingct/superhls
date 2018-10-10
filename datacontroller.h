@@ -4,7 +4,7 @@
 struct TSDATALIST {
     size_t id;
     char* data;
-    size_t len;
+    size_t size;
     struct TSDATALIST* head;
     struct TSDATALIST* tail;
 };
@@ -15,9 +15,7 @@ struct TOPICLIST {
     char* tsdatabuff;
     size_t buffusesize; // 这里记录有多少的tsdatabuff已经被使用
     struct TSDATALIST* tsdatalisthead;
-    struct TSDATALIST* tsdatalistdesc;
     struct TSDATALIST* tsdatalisttail;
-    size_t tsdatanum;
     unsigned int tsdatastep;
     char* m3u8;
     size_t m3u8len;
@@ -31,6 +29,6 @@ void removetopicfromlist (struct TOPICLIST *topiclist);
 void addtsdatatobuff (struct TOPICLIST *topiclist, const char *data, size_t len);
 char *getm3u8file (char *topic, size_t* len);
 char *gettsfile (char *topic, size_t id, size_t *len);
-void createtsfile ();
+void createalltsfile ();
 
 #endif

@@ -1,20 +1,21 @@
 CC=gcc
+CFLAGS=-O3
 LIBS=-lmicrohttpd -ljansson
 
 superhlsserver: main.o datacontroller.o config.o memalloc.o
-	$(CC) -o $@ $^ $(LIBS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
 
 main.o: main.c datacontroller.h config.h memalloc.h
-	$(CC) -c -o $@ main.c
+	$(CC) $(CFLAGS) -c -o $@ main.c
 
 datacontroller.o: datacontroller.c datacontroller.h config.h memalloc.h
-	$(CC) -c -o $@ datacontroller.c
+	$(CC) $(CFLAGS) -c -o $@ datacontroller.c
 
 config.o: config.c config.h memalloc.h
-	$(CC) -c -o $@ config.c
+	$(CC) $(CFLAGS) -c -o $@ config.c
 
 memalloc.o: memalloc.c
-	$(CC) -c -o $@ memalloc.c
+	$(CC) $(CFLAGS) -c -o $@ memalloc.c
 
 clean:
 	rm *.o
