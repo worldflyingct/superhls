@@ -94,12 +94,24 @@ int main(int argc, char *argv[]) {
         }
     }
     struct CONFIG* config = initconfig ();
+    uint16_t port = 0;
+    for (size_t pos = config->httphostlen-1 ; pos != 0 ; pos--) {
+        if (config->httphost[pos] == ':') {
+            pos++;
+            while (config->httphost[pos] != '\0') {
+                port *= 10;
+                port += config->httphost[pos] - '0';
+                pos++;
+            }
+            break;
+        }
+    }
     signal(SIGALRM, createalltsfile);
     struct itimerval itv;
     itv.it_value.tv_sec = itv.it_interval.tv_sec = 1;
     itv.it_value.tv_usec = itv.it_interval.tv_usec = 0;
     setitimer(ITIMER_REAL, &itv, NULL);
-    struct MHD_Daemon *daemon = MHD_start_daemon(MHD_USE_EPOLL_INTERNALLY, 8001, NULL, NULL, &connectionHandler, NULL, MHD_OPTION_END);
+    struct MHD_Daemon *daemon = MHD_start_daemon(MHD_USE_EPOLL_INTERNALLY, port, NULL, NULL, &connectionHandler, NULL, MHD_OPTION_END);
     if (daemon == NULL) {
         printf("run http server fail, in %s, at %d\n", __FILE__, __LINE__);
         return -1;
