@@ -82,14 +82,16 @@ int connectionHandler(void *cls,
 }
 
 int main(int argc, char *argv[]) {
-    int pid = fork();
-    if (pid < 0) {
-        printf("create deamon fail\n");
-        return -1;
-    } else if(pid > 0) {
-        return 0;
-    } else {
-        setsid();
+    if (argc != 2 || strcmp(argv[1], "--run") != 0) {
+        int pid = fork();
+        if (pid < 0) {
+            printf("create hide thread fail\n");
+            return -1;
+        } else if(pid > 0) {
+            return 0;
+        } else {
+            setsid();
+        }
     }
     struct CONFIG* config = initconfig ();
     signal(SIGALRM, createalltsfile);
