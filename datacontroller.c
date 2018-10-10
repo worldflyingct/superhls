@@ -169,28 +169,11 @@ void createm3u8file (struct TOPICLIST *topiclist) {
 
 void createtsfile (struct TOPICLIST *topiclist) {
     char *file = topiclist->tsdatabuff;
-    size_t endpoint = 0;
-    for (size_t pos = 0 ; pos < topiclist->buffusesize ; pos += 188) {
-        if (file[pos] == 0x47) {
-            if (file[pos+1] == 0x40 && file[pos+2] == 0x00 && (file[pos+10] & 0x01)) { // 寻找ts结构中的pat包
-                endpoint = pos;
-            }
-        } else {
-            printf ("packet is bad, topic:%s, in %s, at %d\n", topiclist->topic, __FILE__, __LINE__);
-            topiclist->buffusesize = 0;
-            return;
-        }
-    }
-    if (endpoint == 0) {
-        printf ("not find pat packet, topic:%s, in %s, at %d\n", topiclist->topic, __FILE__, __LINE__);
-        topiclist->buffusesize = 0;
-        return;
-    }
     struct TSDATALIST *tsdatalist = (struct TSDATALIST*)memalloc(sizeof(struct TSDATALIST), __FILE__, __LINE__);
     tsdatalist->id = topiclist->tsdatastep & 0x0f;
-    tsdatalist->data = (char*)memalloc(endpoint, __FILE__, __LINE__);
-    memcpy(tsdatalist->data, topiclist->tsdatabuff, endpoint);
-    tsdatalist->size = endpoint;
+    tsdatalist->data = (char*)memalloc(topiclist->buffusesize, __FILE__, __LINE__);
+    memcpy(tsdatalist->data, topiclist->tsdatabuff, topiclist->buffusesize);
+    tsdatalist->size = topiclist->buffusesize;
     tsdatalist->tail = NULL;
     topiclist->tsdatastep++;
     tsdatalist->head = topiclist->tsdatalisttail;
@@ -207,14 +190,7 @@ void createtsfile (struct TOPICLIST *topiclist) {
     topiclist->tsdatalisttail->tail = tsdatalist;
     topiclist->tsdatalisttail = topiclist->tsdatalisttail->tail;
     createm3u8file (topiclist);
-    topiclist->buffusesize -= endpoint;
-    if (topiclist->buffusesize < endpoint) {
-        memcpy(topiclist->tsdatabuff, topiclist->tsdatabuff + endpoint, topiclist->buffusesize);
-    } else {
-        for (size_t pos = 0 ; pos < topiclist->buffusesize ; pos++) {
-            topiclist->tsdatabuff[pos] = topiclist->tsdatabuff[pos+endpoint];
-        }
-    }
+    topiclist->buffusesize = 0;
 }
 
 void createalltsfile () {
