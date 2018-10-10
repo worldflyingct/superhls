@@ -4,4 +4,5 @@ superhlsserver
 store
 fifo
 config.json
+*.log
 

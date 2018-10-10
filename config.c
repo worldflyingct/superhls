@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <jansson.h>
 #include "config.h"
+#include "memalloc.h"
 
 struct CONFIG config;
 
@@ -15,7 +16,7 @@ struct CONFIG* initconfig () {
         json_t *obj = json_load_file("config.json", 0, &error);
         json_t* httphostobj = json_object_get(obj, "http_host");
         size_t len = json_string_length(httphostobj);
-        char *httphost = (char*)malloc(len + 1);
+        char *httphost = (char*)memalloc(len + 1, __FILE__, __LINE__);
         memcpy(httphost, json_string_value(httphostobj), len + 1);
         config.httphost = httphost;
         config.httphostlen = len;

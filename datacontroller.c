@@ -1,8 +1,8 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include "datacontroller.h"
 #include "config.h"
+#include "memalloc.h"
 
 struct TOPICLIST *topiclisthead = NULL;
 struct TOPICLIST *topiclisttail = NULL;
@@ -23,20 +23,20 @@ struct TOPICLIST *gettopiclist (const char* topic) {
 #define EXTM3UFOOT   "#EXT-X-ENDLIST\r"
 
 struct TOPICLIST *addtopictolist (const char* topic) {
-    struct TOPICLIST *topiclist = (struct TOPICLIST*)malloc(sizeof(struct TOPICLIST));
+    struct TOPICLIST *topiclist = (struct TOPICLIST*)memalloc(sizeof(struct TOPICLIST), __FILE__, __LINE__);
     size_t len = strlen(topic);
-    topiclist->topic = (char*)malloc(len + 1);
+    topiclist->topic = (char*)memalloc(len + 1, __FILE__, __LINE__);
     strcpy (topiclist->topic, topic);
     topiclist->topiclen = len;
     struct CONFIG* config = getconfig ();
-    topiclist->tsdatabuff = (char*)malloc(config->tsdatabuffsize);
+    topiclist->tsdatabuff = (char*)memalloc(config->tsdatabuffsize, __FILE__, __LINE__);
     topiclist->buffusesize = 0;
     topiclist->tsdatalisthead = NULL;
     topiclist->tsdatalistdesc = NULL;
     topiclist->tsdatalisttail = NULL;
     topiclist->tsdatanum = 0;
     topiclist->tsdatastep = 0;
-    topiclist->m3u8 = (char*)malloc(sizeof(EXTM3UHEAD"0\r"EXTM3UFOOT));
+    topiclist->m3u8 = (char*)memalloc(sizeof(EXTM3UHEAD"0\r"EXTM3UFOOT), __FILE__, __LINE__);
     memcpy(topiclist->m3u8, EXTM3UHEAD"0\r"EXTM3UFOOT, sizeof(EXTM3UHEAD"0\r"EXTM3UFOOT));
     topiclist->m3u8len = sizeof(EXTM3UHEAD"0\r"EXTM3UFOOT) - 1;
     topiclist->tail = NULL;
@@ -67,18 +67,13 @@ void removetopicfromlist (struct TOPICLIST *topiclist) {
     while (tsdatalist != NULL) {
         struct TSDATALIST *tmp = tsdatalist;
         tsdatalist = tsdatalist->tail;
-        free (tmp->data);
-        free (tmp);
+        memfree (tmp->data);
+        memfree (tmp);
     }
-    free (topiclist->topic);
-    free (topiclist->tsdatabuff);
-    free (topiclist->m3u8);
-    free (topiclist);
-}
-
-void addtsdatatobuff (struct TOPICLIST *topiclist, const char *data, size_t len) {
-    memcpy(topiclist->tsdatabuff + topiclist->buffusesize, data, len);
-    topiclist->buffusesize += len;
+    memfree (topiclist->topic);
+    memfree (topiclist->tsdatabuff);
+    memfree (topiclist->m3u8);
+    memfree (topiclist);
 }
 
 void createm3u8file (struct TOPICLIST *topiclist) {
@@ -102,9 +97,9 @@ void createm3u8file (struct TOPICLIST *topiclist) {
         numbersize = 39;
     }
     struct CONFIG* config = getconfig ();
-    free (topiclist->m3u8);
+    memfree (topiclist->m3u8);
     size_t size = sizeof(EXTM3UHEAD) - 1 + numbersize  + 1 + 3*(sizeof(EXTM3UDATA) - 1 + 13 + config->httphostlen + topiclist->topiclen) + 1 ;
-    topiclist->m3u8 = (char*)malloc(size);
+    topiclist->m3u8 = (char*)memalloc(size, __FILE__, __LINE__);
     struct TSDATALIST* tsdatalist0 = topiclist->tsdatalistdesc;
     struct TSDATALIST* tsdatalist1 = tsdatalist0->tail;
     struct TSDATALIST* tsdatalist2 = tsdatalist1->tail;
@@ -126,9 +121,9 @@ void createtsfile () {
                 endpoint = pos;
             }
         }
-        struct TSDATALIST *tsdatalist = (struct TSDATALIST*)malloc(sizeof(struct TSDATALIST));
+        struct TSDATALIST *tsdatalist = (struct TSDATALIST*)memalloc(sizeof(struct TSDATALIST), __FILE__, __LINE__);
         tsdatalist->id = topiclist->tsdatastep % 10;
-        tsdatalist->data = (char*)malloc(endpoint);
+        tsdatalist->data = (char*)memalloc(endpoint, __FILE__, __LINE__);
         memcpy(tsdatalist->data, topiclist->tsdatabuff, endpoint);
         tsdatalist->len = endpoint;
         tsdatalist->tail = NULL;
@@ -156,8 +151,8 @@ void createtsfile () {
             struct TSDATALIST *tmp = topiclist->tsdatalisthead;
             topiclist->tsdatalisthead = topiclist->tsdatalisthead->tail;
             topiclist->tsdatalisthead->head = NULL;
-            free(tmp->data);
-            free(tmp);
+            memfree(tmp->data);
+            memfree(tmp);
             topiclist->tsdatalistdesc = topiclist->tsdatalistdesc->tail;
             topiclist->tsdatalisttail->tail = tsdatalist;
             topiclist->tsdatalisttail = topiclist->tsdatalisttail->tail;
@@ -201,4 +196,14 @@ char* gettsfile (char *topic, size_t id, size_t *len) {
     }
     *len = 0;
     return "";
+}
+
+void addtsdatatobuff (struct TOPICLIST *topiclist, const char *data, size_t len) {
+    struct CONFIG* config = getconfig ();
+    if (topiclist->buffusesize + len > config->tsdatabuffsize) {
+        printf ("buffer is full, at %s, in %d\n" __FILE__, __LINE__);
+        createm3u8file (topiclist);
+    }
+    memcpy(topiclist->tsdatabuff + topiclist->buffusesize, data, len);
+    topiclist->buffusesize += len;
 }

@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <signal.h>
 #include <microhttpd.h>
@@ -7,6 +6,7 @@
 #include <sys/stat.h>
 #include "datacontroller.h"
 #include "config.h"
+#include "memalloc.h"
 
 #define INSTRUCTION    "This is jsmpegserver, power by https://www.worldflying.cn, if you have some question, you can send a email to jevian_ma@worldflying.cn"
 #define TOPICCONFLICT  "{\"errcode\":-1, \"errmsg\":\"topic exist\"}"
@@ -47,22 +47,22 @@ int connectionHandler(void *cls,
     } else {
         size_t size = strlen(url);
         if (!strcmp(url + size-3, ".ts")) {
-            char *topic = (char*)malloc(size-3); // "x.ts"共4个字符,不减4只减3是为了\0
+            char *topic = (char*)memalloc(size-3, __FILE__, __LINE__); // "x.ts"共4个字符,不减4只减3是为了\0
             memcpy(topic, url, size-4);
             topic[size-4] = '\0';
             size_t id = url[size-4] - '0';
             size_t len;
             char *html = gettsfile (topic, id, &len);
-            free (topic);
+            memfree (topic);
             response = MHD_create_response_from_buffer(len, html, MHD_RESPMEM_PERSISTENT);
             MHD_add_response_header(response, "Content-Type", "video/mp2t");
         } else if (!strcmp(url + size-5, ".m3u8")) {
-            char *topic = (char*)malloc(size-4); // ".m3u8"共4个字符,不减5只减4是为了\0
+            char *topic = (char*)memalloc(size-4, __FILE__, __LINE__); // ".m3u8"共4个字符,不减5只减4是为了\0
             memcpy(topic, url, size-5);
             topic[size-5] = '\0';
             size_t len;
             char *html = getm3u8file (topic, &len);
-            free (topic);
+            memfree (topic);
             response = MHD_create_response_from_buffer(len, html, MHD_RESPMEM_PERSISTENT);
             MHD_add_response_header(response, "Content-Type", "application/vnd.apple.mpegurl");
         } else {
@@ -91,7 +91,7 @@ int main(int argc, char *argv[]) {
     if (access("fifo", F_OK) != 0) {
         mkfifo("fifo", 0777);
     }
-    char* fifobuf = (char*)malloc(16);
+    char* fifobuf = (char*)memalloc(16, __FILE__, __LINE__);
     while (1) {
         int fd = open("fifo", O_RDONLY);
         read (fd, fifobuf, 16);
@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
         }
         close (fd);
     }
-    free (fifobuf);
+    memfree (fifobuf);
     MHD_stop_daemon(daemon);
     return 0;
 }
