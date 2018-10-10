@@ -134,23 +134,28 @@ void createtsfile () {
         tsdatalist->tail = NULL;
         topiclist->tsdatastep++;
         if (topiclist->tsdatanum == 0) {
+            tsdatalist->head = NULL;
             topiclist->tsdatalisthead = tsdatalist;
             topiclist->tsdatalistdesc = topiclist->tsdatalisthead;
             topiclist->tsdatalisttail = topiclist->tsdatalisthead;
             topiclist->tsdatanum++;
         } else if (topiclist->tsdatanum < 3) {
+            tsdatalist->head = topiclist->tsdatalisttail;
             topiclist->tsdatalisttail->tail = tsdatalist;
             topiclist->tsdatalisttail = topiclist->tsdatalisttail->tail;
             topiclist->tsdatanum++;
         } else if (topiclist->tsdatanum < 6) {
+            tsdatalist->head = topiclist->tsdatalisttail;
             topiclist->tsdatalistdesc = topiclist->tsdatalistdesc->tail;
             topiclist->tsdatalisttail->tail = tsdatalist;
             topiclist->tsdatalisttail = topiclist->tsdatalisttail->tail;
             topiclist->tsdatanum++;
             createm3u8file (topiclist);
         } else {
+            tsdatalist->head = topiclist->tsdatalisttail;
             struct TSDATALIST *tmp = topiclist->tsdatalisthead;
             topiclist->tsdatalisthead = topiclist->tsdatalisthead->tail;
+            topiclist->tsdatalisthead->head = NULL;
             free(tmp->data);
             free(tmp);
             topiclist->tsdatalistdesc = topiclist->tsdatalistdesc->tail;
@@ -184,15 +189,15 @@ char* gettsfile (char *topic, size_t id, size_t *len) {
     struct TOPICLIST *topiclist = gettopiclist (topic);
     if (topiclist == NULL) {
         *len = 0;
-        return NULL;
+        return "";
     }
-    struct TSDATALIST* tsdatalist = topiclist->tsdatalisthead;
+    struct TSDATALIST* tsdatalist = topiclist->tsdatalisttail;
     while (tsdatalist != NULL) {
         if (tsdatalist->id == id) {
             *len = tsdatalist->len;
             return tsdatalist->data;
         }
-        tsdatalist = tsdatalist->tail;
+        tsdatalist = tsdatalist->head;
     }
     *len = 0;
     return "";

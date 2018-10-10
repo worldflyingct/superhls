@@ -5,6 +5,7 @@ struct TSDATALIST {
     size_t id;
     char* data;
     size_t len;
+    struct TSDATALIST* head;
     struct TSDATALIST* tail;
 };
 
