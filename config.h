@@ -5,6 +5,8 @@ struct CONFIG {
     char *httphost;
     size_t httphostlen;
     size_t tsdatabuffsize;
+    unsigned int usefultsnum;
+    unsigned int tstimelong;
 };
 
 struct CONFIG* getconfig ();

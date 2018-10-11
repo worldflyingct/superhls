@@ -4,7 +4,7 @@
 #include "config.h"
 #include "memalloc.h"
 
-struct CONFIG config;
+static struct CONFIG config;
 
 struct CONFIG* getconfig () {
     return &config;
@@ -21,16 +21,21 @@ struct CONFIG* initconfig () {
         config.httphost = httphost;
         config.httphostlen = len;
         config.tsdatabuffsize = json_integer_value(json_object_get(obj, "tsdatabuffsize"));
+        config.usefultsnum = json_integer_value(json_object_get(obj, "usefultsnum"));
+        config.tstimelong = json_integer_value(json_object_get(obj, "tstimelong"));
         json_decref(obj);
     } else {
         json_t *obj = json_object();
-        json_object_set_new(obj, "http_host", json_string("http://localhost:8001"));
+        json_object_set_new(obj, "http_host", json_string("http://localhost:8002"));
         json_object_set_new(obj, "tsdatabuffsize", json_integer(1024*1024));
+        json_object_set_new(obj, "usefultsnum", json_integer(2));
+        json_object_set_new(obj, "tstimelong", json_integer(500000));
         json_dump_file(obj, "config.json", 0);
         json_decref(obj);
-        config.httphost = "http://localhost";
-        config.httphostlen = sizeof("http://localhost") - 1;
+        config.httphost = "http://localhost:8002";
+        config.httphostlen = sizeof("http://localhost:8002") - 1;
         config.tsdatabuffsize = 512*1024;
+        config.usefultsnum = 2;
     }
     return &config;
 }

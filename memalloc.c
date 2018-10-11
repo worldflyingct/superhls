@@ -2,11 +2,11 @@
 #include <stdlib.h>
 #include <pthread.h>
 
-// #define STOREMALLOCNUM
+#define STOREMALLOCNUM
 
 #ifdef STOREMALLOCNUM
-int mallocnum = 0;
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+static int mallocnum = 0;
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
 void* memalloc (size_t num, char* filename, int line) {

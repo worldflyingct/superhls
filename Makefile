@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=-O3
-LIBS=-lmicrohttpd -ljansson
+LIBS=-lmicrohttpd -ljansson -lpthread
 
 superhlsserver: main.o datacontroller.o config.o memalloc.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)

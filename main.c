@@ -4,9 +4,12 @@
 #include <microhttpd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <pthread.h>
 #include "datacontroller.h"
 #include "config.h"
 #include "memalloc.h"
+
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #define INSTRUCTION    "This is jsmpegserver, power by https://www.worldflying.cn, if you have some question, you can send a email to jevian_ma@worldflying.cn"
 #define TOPICCONFLICT  "{\"errcode\":-1, \"errmsg\":\"topic exist\"}"
@@ -20,6 +23,8 @@ int connectionHandler(void *cls,
             const char *upload_data,
             size_t *upload_data_size,
             void ** ptr) {
+    showmallocnum (__FILE__, __LINE__);
+    pthread_mutex_lock(&mutex);
     struct MHD_Response *response;
     if (!strcmp(method, "POST")) {
         if (*ptr == NULL) {
@@ -27,6 +32,7 @@ int connectionHandler(void *cls,
             if (topiclist == NULL) {
                 topiclist = addtopictolist (url);
                 *ptr = topiclist;
+                pthread_mutex_unlock(&mutex);
                 return MHD_YES;
             } else {
                 response = MHD_create_response_from_buffer(sizeof(TOPICCONFLICT)-1, TOPICCONFLICT, MHD_RESPMEM_PERSISTENT);
@@ -37,6 +43,7 @@ int connectionHandler(void *cls,
             if (*upload_data_size != 0) {
                 addtsdatatobuff (topiclist, upload_data, *upload_data_size);
                 *upload_data_size = 0;
+                pthread_mutex_unlock(&mutex);
                 return MHD_YES;
             }
             removetopicfromlist (topiclist);
@@ -45,13 +52,14 @@ int connectionHandler(void *cls,
             MHD_add_response_header(response, "Access-Control-Allow-Headers", "*");
         }
     } else {
+        printf ("url:%s, in %s, at %d\n", url, __FILE__, __LINE__);
         size_t size = strlen(url);
         if (!strcmp(url + size-3, ".ts")) {
             char *topic = (char*)memalloc(size-3, __FILE__, __LINE__); // "x.ts"共4个字符,不减4只减3是为了\0
             memcpy(topic, url, size-4);
             topic[size-4] = '\0';
             size_t id;
-            if (url[size-4] > 'a') {
+            if (url[size-4] >= 'a') {
                 id = url[size-4] - 'a' + 10;
             } else {
                 id = url[size-4] - '0';
@@ -78,11 +86,13 @@ int connectionHandler(void *cls,
     MHD_add_response_header(response, "Access-Control-Allow-Origin", "*");
     int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
     MHD_destroy_response(response);
+    pthread_mutex_unlock(&mutex);
+    showmallocnum (__FILE__, __LINE__);
     return ret;
 }
 
 uint16_t gethttpport () {
-    struct CONFIG* config = initconfig ();
+    struct CONFIG* config = getconfig ();
     uint16_t port = 0;
     for (size_t pos = config->httphostlen-1 ; pos != 0 ; pos--) {
         if (config->httphost[pos] == ':') {
@@ -97,6 +107,21 @@ uint16_t gethttpport () {
     }
 }
 
+void *thread_func(void *arg) {
+    pthread_mutex_lock(&mutex);
+    createalltsfile ();
+    pthread_mutex_unlock(&mutex);
+}
+
+void signalarmhandle () {
+    pthread_t tid;
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+    pthread_create(&tid, &attr, thread_func, NULL);
+    pthread_attr_destroy(&attr);
+}
+
 int main(int argc, char *argv[]) {
     if (argc != 2 || strcmp(argv[1], "--run") != 0) {
         int pid = fork();
@@ -109,10 +134,11 @@ int main(int argc, char *argv[]) {
             setsid();
         }
     }
-    signal(SIGALRM, createalltsfile);
+    struct CONFIG* config = initconfig ();
+    signal(SIGALRM, signalarmhandle);
     struct itimerval itv;
-    itv.it_value.tv_sec = itv.it_interval.tv_sec = 1;
-    itv.it_value.tv_usec = itv.it_interval.tv_usec = 0;
+    itv.it_value.tv_sec = itv.it_interval.tv_sec = config->tstimelong / 1000000;
+    itv.it_value.tv_usec = itv.it_interval.tv_usec = config->tstimelong % 1000000;
     setitimer(ITIMER_REAL, &itv, NULL);
     struct MHD_Daemon *daemon = MHD_start_daemon(MHD_USE_EPOLL_INTERNALLY, gethttpport(), NULL, NULL, &connectionHandler, NULL, MHD_OPTION_END);
     if (daemon == NULL) {
