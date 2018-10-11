@@ -23,7 +23,6 @@ int connectionHandler(void *cls,
             const char *upload_data,
             size_t *upload_data_size,
             void ** ptr) {
-    showmallocnum (__FILE__, __LINE__);
     pthread_mutex_lock(&mutex);
     struct MHD_Response *response;
     if (!strcmp(method, "POST")) {
@@ -87,7 +86,6 @@ int connectionHandler(void *cls,
     int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
     MHD_destroy_response(response);
     pthread_mutex_unlock(&mutex);
-    showmallocnum (__FILE__, __LINE__);
     return ret;
 }
 
