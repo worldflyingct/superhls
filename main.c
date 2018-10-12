@@ -26,8 +26,8 @@ int connectionHandler(void *cls,
             void ** ptr) {
     struct MHD_Response *response;
     if (!strcmp(method, "POST")) {
-        pthread_rwlock_wrlock(&rwlock);
         if (*ptr == NULL) {
+            pthread_rwlock_wrlock(&rwlock);
             struct TOPICLIST* topiclist = gettopiclist (url);
             if (topiclist == NULL) {
                 topiclist = addtopictolist (url);
@@ -42,11 +42,13 @@ int connectionHandler(void *cls,
         } else {
             struct TOPICLIST* topiclist = *ptr;
             if (*upload_data_size != 0) {
+                pthread_rwlock_rdlock(&rwlock);
                 addtsdatatobuff(topiclist, upload_data, *upload_data_size);
                 pthread_rwlock_unlock(&rwlock);
                 *upload_data_size = 0;
                 return MHD_YES;
             }
+            pthread_rwlock_wrlock(&rwlock);
             removetopicfromlist(topiclist);
             pthread_rwlock_unlock(&rwlock);
             response = MHD_create_response_from_buffer(sizeof(TRANSFERFINISH)-1, TRANSFERFINISH, MHD_RESPMEM_PERSISTENT);
