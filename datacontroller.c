@@ -221,6 +221,16 @@ char* gettsfile (char *topic, size_t id, size_t *len) {
     return "";
 }
 
+char* getlatesttsfile (char *topic, size_t *len) {
+    struct TOPICLIST *topiclist = gettopiclist (topic);
+    if (topiclist == NULL) {
+        *len = 0;
+        return "";
+    }
+    *len = topiclist->tsdatalisttail->size;
+    return topiclist->tsdatalisttail->data;
+}
+
 void addtsdatatobuff (struct TOPICLIST *topiclist, const char *data, size_t size) {
     struct CONFIG* config = getconfig ();
     if (topiclist->buffusedsize + size > config->tsdatabuffsize) {
