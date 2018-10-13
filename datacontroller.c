@@ -234,8 +234,7 @@ char* getlatesttsfile (char *topic, size_t *len) {
 void addtsdatatobuff (struct TOPICLIST *topiclist, const char *data, size_t size) {
     struct CONFIG* config = getconfig ();
     if (topiclist->buffusedsize + size > config->tsdatabuffsize) {
-        printf ("buffer is not enough, at %s, in %d\n" __FILE__, __LINE__);
-        createtsfile (topiclist);
+        printf ("buffer is not enough, at %s, in %d\n", __FILE__, __LINE__);
         return;
     }
     memcpy(topiclist->tsdatabuff + topiclist->buffusedsize, data, size);
