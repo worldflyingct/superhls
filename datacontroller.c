@@ -116,7 +116,7 @@ void createm3u8file (struct TOPICLIST *topiclist) {
     }
     struct CONFIG* config = getconfig ();
     memfree (topiclist->m3u8);
-    size_t size = sizeof(EXTM3UHEAD) - 1 + numbersize  + 1 + 14*(sizeof(EXTM3UDATA) - 1 + 5 + config->httphostlen + topiclist->topiclen) + 1 ;
+    size_t size = sizeof(EXTM3UHEAD) - 1 + numbersize  + 1 + 14*(sizeof(EXTM3UDATA) - 1 + 5 + topiclist->topiclen) -1 + 1 ;
     topiclist->m3u8 = (char*)memalloc(size, __FILE__, __LINE__);
     struct TSDATALIST* tsdatalist0 = topiclist->tsdatalisthead;
     struct TSDATALIST* tsdatalist1 = tsdatalist0->tail;
@@ -132,35 +132,35 @@ void createm3u8file (struct TOPICLIST *topiclist) {
     struct TSDATALIST* tsdatalist11 = tsdatalist10->tail;
     struct TSDATALIST* tsdatalist12 = tsdatalist11->tail;
     struct TSDATALIST* tsdatalist13 = tsdatalist12->tail;
-    topiclist->m3u8len = sprintf(topiclist->m3u8, EXTM3UHEAD"%u\r"EXTM3UDATA"%s%s%x.ts\r"
-                                                                  EXTM3UDATA"%s%s%x.ts\r"
-                                                                  EXTM3UDATA"%s%s%x.ts\r"
-                                                                  EXTM3UDATA"%s%s%x.ts\r"
-                                                                  EXTM3UDATA"%s%s%x.ts\r"
-                                                                  EXTM3UDATA"%s%s%x.ts\r"
-                                                                  EXTM3UDATA"%s%s%x.ts\r"
-                                                                  EXTM3UDATA"%s%s%x.ts\r"
-                                                                  EXTM3UDATA"%s%s%x.ts\r"
-                                                                  EXTM3UDATA"%s%s%x.ts\r"
-                                                                  EXTM3UDATA"%s%s%x.ts\r"
-                                                                  EXTM3UDATA"%s%s%x.ts\r"
-                                                                  EXTM3UDATA"%s%s%x.ts\r"
-                                                                  EXTM3UDATA"%s%s%x.ts\r",
+    topiclist->m3u8len = sprintf(topiclist->m3u8, EXTM3UHEAD"%u\r"EXTM3UDATA"%s%x.ts\r"
+                                                                  EXTM3UDATA"%s%x.ts\r"
+                                                                  EXTM3UDATA"%s%x.ts\r"
+                                                                  EXTM3UDATA"%s%x.ts\r"
+                                                                  EXTM3UDATA"%s%x.ts\r"
+                                                                  EXTM3UDATA"%s%x.ts\r"
+                                                                  EXTM3UDATA"%s%x.ts\r"
+                                                                  EXTM3UDATA"%s%x.ts\r"
+                                                                  EXTM3UDATA"%s%x.ts\r"
+                                                                  EXTM3UDATA"%s%x.ts\r"
+                                                                  EXTM3UDATA"%s%x.ts\r"
+                                                                  EXTM3UDATA"%s%x.ts\r"
+                                                                  EXTM3UDATA"%s%x.ts\r"
+                                                                  EXTM3UDATA"%s%x.ts\r",
             topiclist->tsdatastep,
-            config->httphost, topiclist->topic, tsdatalist0->id,
-            config->httphost, topiclist->topic, tsdatalist1->id,
-            config->httphost, topiclist->topic, tsdatalist2->id,
-            config->httphost, topiclist->topic, tsdatalist3->id,
-            config->httphost, topiclist->topic, tsdatalist4->id,
-            config->httphost, topiclist->topic, tsdatalist5->id,
-            config->httphost, topiclist->topic, tsdatalist6->id,
-            config->httphost, topiclist->topic, tsdatalist7->id,
-            config->httphost, topiclist->topic, tsdatalist8->id,
-            config->httphost, topiclist->topic, tsdatalist9->id,
-            config->httphost, topiclist->topic, tsdatalist10->id,
-            config->httphost, topiclist->topic, tsdatalist11->id,
-            config->httphost, topiclist->topic, tsdatalist12->id,
-            config->httphost, topiclist->topic, tsdatalist13->id
+            topiclist->topic+1, tsdatalist0->id,
+            topiclist->topic+1, tsdatalist1->id,
+            topiclist->topic+1, tsdatalist2->id,
+            topiclist->topic+1, tsdatalist3->id,
+            topiclist->topic+1, tsdatalist4->id,
+            topiclist->topic+1, tsdatalist5->id,
+            topiclist->topic+1, tsdatalist6->id,
+            topiclist->topic+1, tsdatalist7->id,
+            topiclist->topic+1, tsdatalist8->id,
+            topiclist->topic+1, tsdatalist9->id,
+            topiclist->topic+1, tsdatalist10->id,
+            topiclist->topic+1, tsdatalist11->id,
+            topiclist->topic+1, tsdatalist12->id,
+            topiclist->topic+1, tsdatalist13->id
         );
 }
 

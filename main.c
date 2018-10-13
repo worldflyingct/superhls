@@ -107,22 +107,6 @@ int connectionHandler(void *cls,
     return ret;
 }
 
-uint16_t gethttpport () {
-    struct CONFIG* config = getconfig ();
-    uint16_t port = 0;
-    for (size_t pos = config->httphostlen-1 ; pos != 0 ; pos--) {
-        if (config->httphost[pos] == ':') {
-            pos++;
-            while (config->httphost[pos] != '\0') {
-                port *= 10;
-                port += config->httphost[pos] - '0';
-                pos++;
-            }
-            return port;
-        }
-    }
-}
-
 void *thread_func(void *arg) {
     pthread_rwlock_wrlock(&rwlock);
     createalltsfile ();
@@ -157,7 +141,7 @@ int main (int argc, char *argv[]) {
     itv.it_value.tv_usec = itv.it_interval.tv_usec = config->tstimelong % 1000000;
     setitimer(ITIMER_REAL, &itv, NULL);
     int cpunum = get_nprocs();
-    struct MHD_Daemon *daemon = MHD_start_daemon(MHD_USE_EPOLL_INTERNALLY, gethttpport(), NULL, NULL, &connectionHandler, NULL, MHD_OPTION_THREAD_POOL_SIZE, cpunum, MHD_OPTION_END);
+    struct MHD_Daemon *daemon = MHD_start_daemon(MHD_USE_EPOLL_INTERNALLY, config->port, NULL, NULL, &connectionHandler, NULL, MHD_OPTION_THREAD_POOL_SIZE, cpunum, MHD_OPTION_END);
     if (daemon == NULL) {
         printf("run http server fail, in %s, at %d\n", __FILE__, __LINE__);
         return -1;
