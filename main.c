@@ -57,13 +57,13 @@ int connectionHandler(void *cls,
         }
     } else {
         size_t size = strlen(url);
-        if (!strcmp(url + size-4, ".mp4")) {
-            char *topic = (char*)memalloc(size-3, __FILE__, __LINE__); // ".mp4"共4个字符,不减4只减3是为了\0
-            memcpy(topic, url, size-4);
-            topic[size-4] = '\0';
+        if (!strcmp(url + size-10, ".latest.ts")) {
+            char *topic = (char*)memalloc(size-9, __FILE__, __LINE__); // ".latest.ts"共10个字符,不减10只减9是为了\0
+            memcpy(topic, url, size-10);
+            topic[size-10] = '\0';
             size_t len;
             pthread_rwlock_rdlock(&rwlock);
-            char *html = getmp4file (topic, &len);
+            char *html = getlatesttsfile (topic, &len);
             response = MHD_create_response_from_buffer(len, html, MHD_RESPMEM_MUST_COPY);
             pthread_rwlock_unlock(&rwlock);
             memfree (topic);

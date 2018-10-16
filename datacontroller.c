@@ -57,8 +57,6 @@ struct TOPICLIST *addtopictolist (const char* topic) {
     topiclist->m3u8 = (char*)memalloc(sizeof(EXTM3UHEAD"0\r"EXTM3UFOOT), __FILE__, __LINE__);
     memcpy(topiclist->m3u8, EXTM3UHEAD"0\r"EXTM3UFOOT, sizeof(EXTM3UHEAD"0\r"EXTM3UFOOT));
     topiclist->m3u8len = sizeof(EXTM3UHEAD"0\r"EXTM3UFOOT) - 1;
-    topiclist->mp4 = (char*)memalloc(1, __FILE__, __LINE__); // 为了防止后面free出现内存异常
-    topiclist->mp4len = 0;
     topiclist->tail = NULL;
     if (topiclisthead == NULL) {
         topiclist->head = NULL;
@@ -93,7 +91,6 @@ void removetopicfromlist (struct TOPICLIST *topiclist) {
     memfree (topiclist->topic);
     memfree (topiclist->tsdatabuff);
     memfree (topiclist->m3u8);
-    memfree (topiclist->mp4);
     memfree (topiclist);
 }
 
@@ -167,15 +164,7 @@ void createm3u8file (struct TOPICLIST *topiclist) {
         );
 }
 
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <stdlib.h>
-
 void createtsfile (struct TOPICLIST *topiclist) {
-    char cmd[192];
-    char inputfile[64];
-    char outputfile[64];
     char *file = topiclist->tsdatabuff;
     struct TSDATALIST *tsdatalist = (struct TSDATALIST*)memalloc(sizeof(struct TSDATALIST), __FILE__, __LINE__);
     tsdatalist->id = topiclist->tsdatastep & 0x0f;
@@ -193,25 +182,6 @@ void createtsfile (struct TOPICLIST *topiclist) {
     topiclist->tsdatalisttail->tail = tsdatalist;
     topiclist->tsdatalisttail = topiclist->tsdatalisttail->tail;
     createm3u8file (topiclist);
-    sprintf(inputfile, "%s%s.ts", "/dev/shm", topiclist->topic);
-    sprintf(outputfile, "%s%s.mp4", "/dev/shm", topiclist->topic);
-    int fd1 = open(inputfile, O_WRONLY|O_CREAT|O_TRUNC, 0777);
-    write (fd1, tsdatalist->data, tsdatalist->size);
-    close (fd1);
-    sprintf(cmd, "%s -i %s -codec copy -y %s", "ffmpeg", inputfile, outputfile);
-    printf("cmd:%s\n", cmd);
-    system (cmd);
-    struct stat statbuff;
-    stat(outputfile, &statbuff);
-    char* mp4file = (char*)memalloc(statbuff.st_size, __FILE__, __LINE__);
-    int fd2 = open(inputfile, O_RDONLY, 0777);
-    read (fd2, mp4file, statbuff.st_size);
-    close (fd2);
-    unlink (inputfile);
-    unlink (outputfile);
-    memfree (topiclist->mp4);
-    topiclist->mp4 = mp4file;
-    topiclist->mp4len = statbuff.st_size;
     topiclist->buffusedsize = 0;
 }
 
@@ -251,14 +221,14 @@ char* gettsfile (char *topic, size_t id, size_t *len) {
     return "";
 }
 
-char* getmp4file (char *topic, size_t *len) {
+char* getlatesttsfile (char *topic, size_t *len) {
     struct TOPICLIST *topiclist = gettopiclist (topic);
     if (topiclist == NULL) {
         *len = 0;
         return "";
     }
-    *len = topiclist->mp4len;
-    return topiclist->mp4;
+    *len = topiclist->tsdatalisttail->size;
+    return topiclist->tsdatalisttail->data;
 }
 
 void addtsdatatobuff (struct TOPICLIST *topiclist, const char *data, size_t size) {

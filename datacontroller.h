@@ -19,8 +19,6 @@ struct TOPICLIST {
     unsigned int tsdatastep;
     char* m3u8;
     size_t m3u8len;
-    char* mp4;
-    size_t mp4len;
     struct TOPICLIST* head;
     struct TOPICLIST* tail;
 };
@@ -31,7 +29,7 @@ void removetopicfromlist (struct TOPICLIST *topiclist);
 void addtsdatatobuff (struct TOPICLIST *topiclist, const char *data, size_t len);
 char *getm3u8file (char *topic, size_t* len);
 char *gettsfile (char *topic, size_t id, size_t *len);
-char* getmp4file (char *topic, size_t *len);
+char* getlatesttsfile (char *topic, size_t *len);
 void createalltsfile ();
 
 #endif
