@@ -120,8 +120,8 @@ int main (int argc, char *argv[]) {
     struct CONFIG* config = initconfig ();
     signal(SIGALRM, signalarmhandle);
     struct itimerval itv;
-    itv.it_value.tv_sec = itv.it_interval.tv_sec = config->tstimelong / 1000000;
-    itv.it_value.tv_usec = itv.it_interval.tv_usec = config->tstimelong % 1000000;
+    itv.it_value.tv_sec = itv.it_interval.tv_sec = config->tstimelong_sec;
+    itv.it_value.tv_usec = itv.it_interval.tv_usec = config->tstimelong_usec;
     setitimer(ITIMER_REAL, &itv, NULL);
     int cpunum = get_nprocs();
     struct MHD_Daemon *daemon = MHD_start_daemon(MHD_USE_EPOLL_INTERNALLY, config->port, NULL, NULL, &connectionHandler, NULL, MHD_OPTION_THREAD_POOL_SIZE, cpunum, MHD_OPTION_END);

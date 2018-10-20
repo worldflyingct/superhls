@@ -2,6 +2,7 @@
 #include <string.h>
 #include <pthread.h>
 #include "datacontroller.h"
+#include "config.h"
 #include "memalloc.h"
 
 static struct TOPICLIST *topiclisthead = NULL;
@@ -18,8 +19,9 @@ struct TOPICLIST *gettopiclist (const char* topic) {
     return NULL;
 }
 
-#define EXTM3UHEAD   "#EXTM3U\r#EXT-X-VERSION:3\r#EXT-X-TARGETDURATION:1\r#EXT-X-MEDIA-SEQUENCE:"
-#define EXTM3UDATA   "#EXTINF:1.000000\r"
+#define EXTM3UHEAD1  "#EXTM3U\r#EXT-X-VERSION:3\r#EXT-X-TARGETDURATION:"
+#define EXTM3UHEAD2  "#EXT-X-MEDIA-SEQUENCE:"
+#define EXTM3UDATA   "#EXTINF:"
 #define EXTM3UFOOT   "#EXT-X-ENDLIST\r"
 
 #define MAXTSPACKAGE 16
@@ -55,9 +57,9 @@ struct TOPICLIST *addtopictolist (const char* topic) {
     topiclist->tsdatalisthead = tsdatalisthead;
     topiclist->tsdatalisttail = tsdatalisttail;
     topiclist->tsdatastep = MAXTSPACKAGE;
-    topiclist->m3u8 = (char*)memalloc(sizeof(EXTM3UHEAD"0\r"EXTM3UFOOT), __FILE__, __LINE__);
-    memcpy(topiclist->m3u8, EXTM3UHEAD"0\r"EXTM3UFOOT, sizeof(EXTM3UHEAD"0\r"EXTM3UFOOT));
-    topiclist->m3u8len = sizeof(EXTM3UHEAD"0\r"EXTM3UFOOT) - 1;
+    topiclist->m3u8 = (char*)memalloc(sizeof(EXTM3UHEAD1"1\r"EXTM3UHEAD2"0\r"EXTM3UFOOT), __FILE__, __LINE__);
+    memcpy(topiclist->m3u8, EXTM3UHEAD1"1\r"EXTM3UHEAD2"0\r"EXTM3UFOOT, sizeof(EXTM3UHEAD1"1\r"EXTM3UHEAD2"0\r"EXTM3UFOOT));
+    topiclist->m3u8len = sizeof(EXTM3UHEAD1"1\r"EXTM3UHEAD2"0\r"EXTM3UFOOT) - 1;
     topiclist->tail = NULL;
     if (topiclisthead == NULL) {
         topiclist->head = NULL;
@@ -123,24 +125,31 @@ void createm3u8file (struct TOPICLIST *topiclist) {
         numbersize = 39;
     }
     memfree (topiclist->m3u8);
-    size_t size = sizeof(EXTM3UHEAD) - 1 + numbersize  + 1 + 5*(sizeof(EXTM3UDATA) - 1 + 5 + topiclist->topiclen) -1 + 1 ;
+    struct CONFIG* config = getconfig ();
+    unsigned int duration;
+    if (config->tstimelong_usec == 0)
+        duration = config->tstimelong_sec;
+    else
+        duration = config->tstimelong_sec + 1;
+    size_t size = sizeof(EXTM3UHEAD1) - 1 + 2 + sizeof(EXTM3UHEAD2) - 1 + numbersize  + 1 + 5*(sizeof(EXTM3UDATA) - 1 + 9 + 5 + topiclist->topiclen) -1 + 1;
     topiclist->m3u8 = (char*)memalloc(size, __FILE__, __LINE__);
     struct TSDATALIST* tsdatalist4 = topiclist->tsdatalisttail;
     struct TSDATALIST* tsdatalist3 = tsdatalist4->head;
     struct TSDATALIST* tsdatalist2 = tsdatalist3->head;
     struct TSDATALIST* tsdatalist1 = tsdatalist2->head;
     struct TSDATALIST* tsdatalist0 = tsdatalist1->head;
-    topiclist->m3u8len = sprintf(topiclist->m3u8, EXTM3UHEAD"%u\r"EXTM3UDATA"%s%x.ts\r"
-                                                                  EXTM3UDATA"%s%x.ts\r"
-                                                                  EXTM3UDATA"%s%x.ts\r"
-                                                                  EXTM3UDATA"%s%x.ts\r"
-                                                                  EXTM3UDATA"%s%x.ts\r",
-            topiclist->tsdatastep,
-            topiclist->topic+1, tsdatalist0->id,
-            topiclist->topic+1, tsdatalist1->id,
-            topiclist->topic+1, tsdatalist2->id,
-            topiclist->topic+1, tsdatalist3->id,
-            topiclist->topic+1, tsdatalist4->id
+    topiclist->m3u8len = sprintf(topiclist->m3u8, EXTM3UHEAD1"%d\r"EXTM3UHEAD2"%u\r"
+                                                    EXTM3UDATA"%d.%06d\r%s%x.ts\r"
+                                                    EXTM3UDATA"%d.%06d\r%s%x.ts\r"
+                                                    EXTM3UDATA"%d.%06d\r%s%x.ts\r"
+                                                    EXTM3UDATA"%d.%06d\r%s%x.ts\r"
+                                                    EXTM3UDATA"%d.%06d\r%s%x.ts\r",
+            duration, topiclist->tsdatastep,
+            config->tstimelong_sec, config->tstimelong_usec, topiclist->topic+1, tsdatalist0->id,
+            config->tstimelong_sec, config->tstimelong_usec, topiclist->topic+1, tsdatalist1->id,
+            config->tstimelong_sec, config->tstimelong_usec, topiclist->topic+1, tsdatalist2->id,
+            config->tstimelong_sec, config->tstimelong_usec, topiclist->topic+1, tsdatalist3->id,
+            config->tstimelong_sec, config->tstimelong_usec, topiclist->topic+1, tsdatalist4->id
         );
 }
 
@@ -195,8 +204,8 @@ void createalltsfile () {
 char* getm3u8file (char *topic, size_t* len) {
     struct TOPICLIST *topiclist = gettopiclist (topic);
     if (topiclist == NULL) {
-        *len = sizeof(EXTM3UHEAD"0\r"EXTM3UFOOT) - 1;
-        return EXTM3UHEAD"0\r"EXTM3UFOOT;
+        *len = sizeof(EXTM3UHEAD1"1\r"EXTM3UHEAD2"0\r"EXTM3UFOOT) - 1;
+        return EXTM3UHEAD1"1\r"EXTM3UHEAD2"0\r"EXTM3UFOOT;
     }
     *len = topiclist->m3u8len;
     return topiclist->m3u8;

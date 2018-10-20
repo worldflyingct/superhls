@@ -3,7 +3,8 @@
 
 struct CONFIG {
     unsigned int port;
-    unsigned int tstimelong;
+    unsigned int tstimelong_sec;
+    unsigned int tstimelong_usec;
 };
 
 struct CONFIG* getconfig ();

@@ -20,10 +20,19 @@ struct CONFIG* initconfig () {
         else
             config.port = json_integer_value(port);
         json_t *tstimelong = json_object_get(obj, "tstimelong");
-        if (port == NULL)
-            config.tstimelong = 1000000;
-        else
-            config.tstimelong = json_integer_value(tstimelong);
+        if (tstimelong == NULL) {
+            config.tstimelong_sec = 1;
+            config.tstimelong_usec = 0;
+        } else {
+            unsigned int usec = json_integer_value(tstimelong);
+            if (usec > 9000000) {
+                config.tstimelong_sec = 9;
+                config.tstimelong_usec = 000000;
+            } else {
+                config.tstimelong_sec = usec / 1000000;
+                config.tstimelong_usec = usec % 1000000;
+            }
+        }
         json_decref(obj);
     } else {
         json_t *obj = json_object();
@@ -32,7 +41,8 @@ struct CONFIG* initconfig () {
         json_dump_file(obj, "config.json", 0);
         json_decref(obj);
         config.port = 8002;
-        config.tstimelong = 1000000;
+        config.tstimelong_sec = 1;
+        config.tstimelong_usec = 0;
     }
     return &config;
 }
