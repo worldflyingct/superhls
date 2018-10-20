@@ -26,12 +26,13 @@ struct TOPICLIST *gettopiclist (const char* topic) {
 
 #define MAXTSPACKAGE 16
 
-struct TOPICLIST *addtopictolist (const char* topic) {
+struct TOPICLIST *addtopictolist (const char* topic, void **ptr) {
     struct TOPICLIST *topiclist = (struct TOPICLIST*)memalloc(sizeof(struct TOPICLIST), __FILE__, __LINE__);
     size_t len = strlen(topic);
     topiclist->topic = (char*)memalloc(len + 1, __FILE__, __LINE__);
     memcpy (topiclist->topic, topic, len + 1);
     topiclist->topiclen = len;
+    topiclist->ptr = ptr;
     topiclist->tstempdatahead = NULL;
     topiclist->buffusedsize = 0;
     topiclist->emptytime = 0;
@@ -85,6 +86,8 @@ void removetopicfromlist (struct TOPICLIST *topiclist) {
         topiclist->tail->head = topiclist->head;
     }
     memfree (topiclist->topic);
+    void **ptr = topiclist->ptr;
+    *ptr = NULL;
     struct TSDATALIST *tsdatalist = topiclist->tsdatalisthead;
     for (int i = 0 ; i < MAXTSPACKAGE ; i++) {
         struct TSDATALIST *tmp = tsdatalist;
