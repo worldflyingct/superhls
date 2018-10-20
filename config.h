@@ -2,7 +2,6 @@
 #define __CONFIG_H__
 
 struct CONFIG {
-    size_t tsdatabuffsize;
     unsigned int port;
     unsigned int tstimelong;
 };

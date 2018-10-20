@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
+#include <pthread.h>
 #include "datacontroller.h"
-#include "config.h"
 #include "memalloc.h"
 
 static struct TOPICLIST *topiclisthead = NULL;
@@ -30,11 +30,10 @@ struct TOPICLIST *addtopictolist (const char* topic) {
     topiclist->topic = (char*)memalloc(len + 1, __FILE__, __LINE__);
     memcpy (topiclist->topic, topic, len + 1);
     topiclist->topiclen = len;
-    struct CONFIG* config = getconfig ();
-    topiclist->tsdatabuff = (char*)memalloc(config->tsdatabuffsize, __FILE__, __LINE__);
+    topiclist->tstempdatahead = NULL;
     topiclist->buffusedsize = 0;
     topiclist->emptytime = 0;
-    topiclist->delete = 0;
+    pthread_mutex_init(&topiclist->mutex, NULL);
     struct TSDATALIST* tsdatalisthead = NULL;
     struct TSDATALIST* tsdatalisttail = NULL;
     for (int i = 0 ; i < MAXTSPACKAGE ; i++) {
@@ -83,6 +82,7 @@ void removetopicfromlist (struct TOPICLIST *topiclist) {
     } else {
         topiclist->tail->head = topiclist->head;
     }
+    memfree (topiclist->topic);
     struct TSDATALIST *tsdatalist = topiclist->tsdatalisthead;
     for (int i = 0 ; i < MAXTSPACKAGE ; i++) {
         struct TSDATALIST *tmp = tsdatalist;
@@ -90,8 +90,14 @@ void removetopicfromlist (struct TOPICLIST *topiclist) {
         memfree (tmp->data);
         memfree (tmp);
     }
-    memfree (topiclist->topic);
-    memfree (topiclist->tsdatabuff);
+    pthread_mutex_destroy (&topiclist->mutex);
+    struct TSTEMPDATA* tstempdata = topiclist->tstempdatahead;
+    while (tstempdata != NULL) {
+        struct TSTEMPDATA* tmp = tstempdata;
+        tstempdata = tstempdata->tail;
+        memfree(tmp->data);
+        memfree(tmp);
+    }
     memfree (topiclist->m3u8);
     memfree (topiclist);
 }
@@ -116,7 +122,6 @@ void createm3u8file (struct TOPICLIST *topiclist) {
     } else if (sizeof(unsigned int) == 16) {
         numbersize = 39;
     }
-    struct CONFIG* config = getconfig ();
     memfree (topiclist->m3u8);
     size_t size = sizeof(EXTM3UHEAD) - 1 + numbersize  + 1 + 5*(sizeof(EXTM3UDATA) - 1 + 5 + topiclist->topiclen) -1 + 1 ;
     topiclist->m3u8 = (char*)memalloc(size, __FILE__, __LINE__);
@@ -140,36 +145,41 @@ void createm3u8file (struct TOPICLIST *topiclist) {
 }
 
 void createtsfile (struct TOPICLIST *topiclist) {
-    char *file = topiclist->tsdatabuff;
     struct TSDATALIST *tsdatalist = (struct TSDATALIST*)memalloc(sizeof(struct TSDATALIST), __FILE__, __LINE__);
     tsdatalist->id = topiclist->tsdatastep & 0x0f;
     tsdatalist->data = (char*)memalloc(topiclist->buffusedsize, __FILE__, __LINE__);
-    memcpy(tsdatalist->data, topiclist->tsdatabuff, topiclist->buffusedsize);
+    struct TSTEMPDATA* tstempdata = topiclist->tstempdatahead;
+    size_t pos = 0;
+    while (tstempdata != NULL) {
+        memcpy(tsdatalist->data + pos, tstempdata->data, tstempdata->size);
+        pos += tstempdata->size;
+        struct TSTEMPDATA* tmp1 = tstempdata;
+        tstempdata = tstempdata->tail;
+        memfree(tmp1->data);
+        memfree(tmp1);
+    }
     tsdatalist->size = topiclist->buffusedsize;
     tsdatalist->tail = NULL;
     tsdatalist->head = topiclist->tsdatalisttail;
-    struct TSDATALIST *tmp = topiclist->tsdatalisthead;
+    struct TSDATALIST *tmp2 = topiclist->tsdatalisthead;
     topiclist->tsdatalisthead = topiclist->tsdatalisthead->tail;
     topiclist->tsdatalisthead->head = NULL;
-    memfree(tmp->data);
-    memfree(tmp);
+    memfree(tmp2->data);
+    memfree(tmp2);
     topiclist->tsdatastep++;
     topiclist->tsdatalisttail->tail = tsdatalist;
     topiclist->tsdatalisttail = topiclist->tsdatalisttail->tail;
     createm3u8file (topiclist);
+    topiclist->tstempdatahead = NULL;
     topiclist->buffusedsize = 0;
 }
 
 void createalltsfile () {
     struct TOPICLIST *topiclist = topiclisthead;
     while (topiclist != NULL) {
-        if (topiclist->delete) {
-            struct TOPICLIST *tmp = topiclist;
-            topiclist = topiclist->tail;
-            removetopicfromlist (tmp);
-        } else if (topiclist->buffusedsize == 0) {
+        if (topiclist->buffusedsize == 0) {
             topiclist->emptytime++;
-            if (topiclist->emptytime >= 3) {
+            if (topiclist->emptytime >= 30) {
                 struct TOPICLIST *tmp = topiclist;
                 topiclist = topiclist->tail;
                 removetopicfromlist (tmp);
@@ -221,11 +231,19 @@ char* getlatesttsfile (char *topic, size_t *len) {
 }
 
 void addtsdatatobuff (struct TOPICLIST *topiclist, const char *data, size_t size) {
-    struct CONFIG* config = getconfig ();
-    if (topiclist->buffusedsize + size > config->tsdatabuffsize) {
-        printf ("buffer is not enough, at %s, in %d\n", __FILE__, __LINE__);
-        return;
+    struct TSTEMPDATA* tstempdata = (struct TSTEMPDATA*)memalloc(topiclist->buffusedsize, __FILE__, __LINE__);
+    tstempdata->data = (char*)memalloc(size, __FILE__, __LINE__);
+    memcpy(tstempdata->data, data, size);
+    tstempdata->size = size;
+    tstempdata->tail = NULL;
+    pthread_mutex_lock (&topiclist->mutex);
+    if (topiclist->tstempdatahead == NULL) {
+        topiclist->tstempdatahead = tstempdata;
+        topiclist->tstempdatatail = topiclist->tstempdatahead;
+    } else {
+        topiclist->tstempdatatail->tail = tstempdata;
+        topiclist->tstempdatatail = topiclist->tstempdatatail->tail;
     }
-    memcpy(topiclist->tsdatabuff + topiclist->buffusedsize, data, size);
     topiclist->buffusedsize += size;
+    pthread_mutex_unlock (&topiclist->mutex);
 }

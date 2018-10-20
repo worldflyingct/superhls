@@ -1,6 +1,12 @@
 #ifndef __DATACONTROLLER_H__
 #define __DATACONTROLLER_H__
 
+struct TSTEMPDATA {
+    char* data;
+    size_t size;
+    struct TSTEMPDATA* tail;
+};
+
 struct TSDATALIST {
     size_t id;
     char* data;
@@ -12,10 +18,11 @@ struct TSDATALIST {
 struct TOPICLIST {
     char* topic;
     size_t topiclen;
-    char* tsdatabuff;
+    struct TSTEMPDATA* tstempdatahead;
+    struct TSTEMPDATA* tstempdatatail;
     size_t buffusedsize; // 这里记录有多少的tsdatabuff已经被使用
     int emptytime;
-    int delete;
+    pthread_mutex_t mutex;
     struct TSDATALIST* tsdatalisthead;
     struct TSDATALIST* tsdatalisttail;
     unsigned int tsdatastep;
