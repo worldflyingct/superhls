@@ -14,6 +14,8 @@ struct TOPICLIST {
     size_t topiclen;
     char* tsdatabuff;
     size_t buffusedsize; // 这里记录有多少的tsdatabuff已经被使用
+    int emptytime;
+    int delete;
     struct TSDATALIST* tsdatalisthead;
     struct TSDATALIST* tsdatalisttail;
     unsigned int tsdatastep;

@@ -22,7 +22,7 @@ struct TOPICLIST *gettopiclist (const char* topic) {
 #define EXTM3UDATA   "#EXTINF:1.000000\r"
 #define EXTM3UFOOT   "#EXT-X-ENDLIST\r"
 
-#define MAXTSPACKAGE 14
+#define MAXTSPACKAGE 16
 
 struct TOPICLIST *addtopictolist (const char* topic) {
     struct TOPICLIST *topiclist = (struct TOPICLIST*)memalloc(sizeof(struct TOPICLIST), __FILE__, __LINE__);
@@ -33,6 +33,8 @@ struct TOPICLIST *addtopictolist (const char* topic) {
     struct CONFIG* config = getconfig ();
     topiclist->tsdatabuff = (char*)memalloc(config->tsdatabuffsize, __FILE__, __LINE__);
     topiclist->buffusedsize = 0;
+    topiclist->emptytime = 0;
+    topiclist->delete = 0;
     struct TSDATALIST* tsdatalisthead = NULL;
     struct TSDATALIST* tsdatalisttail = NULL;
     for (int i = 0 ; i < MAXTSPACKAGE ; i++) {
@@ -116,32 +118,14 @@ void createm3u8file (struct TOPICLIST *topiclist) {
     }
     struct CONFIG* config = getconfig ();
     memfree (topiclist->m3u8);
-    size_t size = sizeof(EXTM3UHEAD) - 1 + numbersize  + 1 + 14*(sizeof(EXTM3UDATA) - 1 + 5 + topiclist->topiclen) -1 + 1 ;
+    size_t size = sizeof(EXTM3UHEAD) - 1 + numbersize  + 1 + 5*(sizeof(EXTM3UDATA) - 1 + 5 + topiclist->topiclen) -1 + 1 ;
     topiclist->m3u8 = (char*)memalloc(size, __FILE__, __LINE__);
-    struct TSDATALIST* tsdatalist0 = topiclist->tsdatalisthead;
-    struct TSDATALIST* tsdatalist1 = tsdatalist0->tail;
-    struct TSDATALIST* tsdatalist2 = tsdatalist1->tail;
-    struct TSDATALIST* tsdatalist3 = tsdatalist2->tail;
-    struct TSDATALIST* tsdatalist4 = tsdatalist3->tail;
-    struct TSDATALIST* tsdatalist5 = tsdatalist4->tail;
-    struct TSDATALIST* tsdatalist6 = tsdatalist5->tail;
-    struct TSDATALIST* tsdatalist7 = tsdatalist6->tail;
-    struct TSDATALIST* tsdatalist8 = tsdatalist7->tail;
-    struct TSDATALIST* tsdatalist9 = tsdatalist8->tail;
-    struct TSDATALIST* tsdatalist10 = tsdatalist9->tail;
-    struct TSDATALIST* tsdatalist11 = tsdatalist10->tail;
-    struct TSDATALIST* tsdatalist12 = tsdatalist11->tail;
-    struct TSDATALIST* tsdatalist13 = tsdatalist12->tail;
+    struct TSDATALIST* tsdatalist4 = topiclist->tsdatalisttail;
+    struct TSDATALIST* tsdatalist3 = tsdatalist4->head;
+    struct TSDATALIST* tsdatalist2 = tsdatalist3->head;
+    struct TSDATALIST* tsdatalist1 = tsdatalist2->head;
+    struct TSDATALIST* tsdatalist0 = tsdatalist1->head;
     topiclist->m3u8len = sprintf(topiclist->m3u8, EXTM3UHEAD"%u\r"EXTM3UDATA"%s%x.ts\r"
-                                                                  EXTM3UDATA"%s%x.ts\r"
-                                                                  EXTM3UDATA"%s%x.ts\r"
-                                                                  EXTM3UDATA"%s%x.ts\r"
-                                                                  EXTM3UDATA"%s%x.ts\r"
-                                                                  EXTM3UDATA"%s%x.ts\r"
-                                                                  EXTM3UDATA"%s%x.ts\r"
-                                                                  EXTM3UDATA"%s%x.ts\r"
-                                                                  EXTM3UDATA"%s%x.ts\r"
-                                                                  EXTM3UDATA"%s%x.ts\r"
                                                                   EXTM3UDATA"%s%x.ts\r"
                                                                   EXTM3UDATA"%s%x.ts\r"
                                                                   EXTM3UDATA"%s%x.ts\r"
@@ -151,16 +135,7 @@ void createm3u8file (struct TOPICLIST *topiclist) {
             topiclist->topic+1, tsdatalist1->id,
             topiclist->topic+1, tsdatalist2->id,
             topiclist->topic+1, tsdatalist3->id,
-            topiclist->topic+1, tsdatalist4->id,
-            topiclist->topic+1, tsdatalist5->id,
-            topiclist->topic+1, tsdatalist6->id,
-            topiclist->topic+1, tsdatalist7->id,
-            topiclist->topic+1, tsdatalist8->id,
-            topiclist->topic+1, tsdatalist9->id,
-            topiclist->topic+1, tsdatalist10->id,
-            topiclist->topic+1, tsdatalist11->id,
-            topiclist->topic+1, tsdatalist12->id,
-            topiclist->topic+1, tsdatalist13->id
+            topiclist->topic+1, tsdatalist4->id
         );
 }
 
@@ -188,8 +163,22 @@ void createtsfile (struct TOPICLIST *topiclist) {
 void createalltsfile () {
     struct TOPICLIST *topiclist = topiclisthead;
     while (topiclist != NULL) {
-        createtsfile (topiclist);
-        topiclist = topiclist->tail;
+        if (topiclist->delete) {
+            struct TOPICLIST *tmp = topiclist;
+            topiclist = topiclist->tail;
+            removetopicfromlist (tmp);
+        } else if (topiclist->buffusedsize == 0) {
+            topiclist->emptytime++;
+            if (topiclist->emptytime >= 3) {
+                struct TOPICLIST *tmp = topiclist;
+                topiclist = topiclist->tail;
+                removetopicfromlist (tmp);
+            }
+        } else {
+            topiclist->emptytime = 0;
+            createtsfile (topiclist);
+            topiclist = topiclist->tail;
+        }
     }
 }
 

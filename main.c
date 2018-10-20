@@ -48,9 +48,7 @@ int connectionHandler(void *cls,
                 *upload_data_size = 0;
                 return MHD_YES;
             }
-            pthread_rwlock_wrlock(&rwlock);
-            removetopicfromlist(topiclist);
-            pthread_rwlock_unlock(&rwlock);
+            topiclist->delete = 1;
             response = MHD_create_response_from_buffer(sizeof(TRANSFERFINISH)-1, TRANSFERFINISH, MHD_RESPMEM_PERSISTENT);
             MHD_add_response_header(response, "Content-Type", "text/plain");
             MHD_add_response_header(response, "Access-Control-Allow-Headers", "*");
