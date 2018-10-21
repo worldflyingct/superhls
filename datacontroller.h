@@ -22,7 +22,7 @@ struct TOPICLIST {
     struct TSTEMPDATA* tstempdatatail;
     size_t buffusedsize; // 这里记录有多少的tsdatabuff已经被使用
     int emptytime;
-    pthread_mutex_t mutex;
+    int willdelete;
     struct TSDATALIST* tsdatalisthead;
     struct TSDATALIST* tsdatalisttail;
     unsigned int tsdatastep;

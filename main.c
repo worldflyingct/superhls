@@ -13,6 +13,7 @@
 static pthread_rwlock_t rwlock = PTHREAD_RWLOCK_INITIALIZER;
 
 #define INSTRUCTION    "This is jsmpegserver, power by https://www.worldflying.cn, if you have some question, you can send a email to jevian_ma@worldflying.cn"
+#define TOPICCONFLICT  "{\"errcode\":-1, \"errmsg\":\"topic exist\"}"
 #define TRANSFERFINISH "{\"errcode\":0, \"errmsg\":\transfer finish\"}"
 
 int connectionHandler(void *cls,
@@ -33,9 +34,12 @@ int connectionHandler(void *cls,
                 pthread_rwlock_wrlock(&rwlock);
                 topiclist = addtopictolist (url);
                 pthread_rwlock_unlock(&rwlock);
+                *ptr = topiclist;
+                return MHD_YES;
+            } else {
+                response = MHD_create_response_from_buffer(sizeof(TOPICCONFLICT)-1, TOPICCONFLICT, MHD_RESPMEM_PERSISTENT);
+                MHD_add_response_header(response, "Content-Type", "text/plain");
             }
-            *ptr = topiclist;
-            return MHD_YES;
         } else {
             struct TOPICLIST* topiclist = *ptr;
             if (*upload_data_size != 0) {
@@ -45,6 +49,7 @@ int connectionHandler(void *cls,
                 *upload_data_size = 0;
                 return MHD_YES;
             }
+            topiclist->willdelete = 1;
             response = MHD_create_response_from_buffer(sizeof(TRANSFERFINISH)-1, TRANSFERFINISH, MHD_RESPMEM_PERSISTENT);
             MHD_add_response_header(response, "Content-Type", "text/plain");
             MHD_add_response_header(response, "Access-Control-Allow-Headers", "*");

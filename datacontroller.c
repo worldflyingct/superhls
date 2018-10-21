@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <string.h>
-#include <pthread.h>
 #include "datacontroller.h"
 #include "config.h"
 #include "memalloc.h"
@@ -35,7 +34,7 @@ struct TOPICLIST *addtopictolist (const char* topic) {
     topiclist->tstempdatahead = NULL;
     topiclist->buffusedsize = 0;
     topiclist->emptytime = 0;
-    pthread_mutex_init(&topiclist->mutex, NULL);
+    topiclist->willdelete = 0;
     struct TSDATALIST* tsdatalisthead = NULL;
     struct TSDATALIST* tsdatalisttail = NULL;
     for (int i = 0 ; i < MAXTSPACKAGE ; i++) {
@@ -92,7 +91,6 @@ void removetopicfromlist (struct TOPICLIST *topiclist) {
         memfree (tmp->data);
         memfree (tmp);
     }
-    pthread_mutex_destroy (&topiclist->mutex);
     struct TSTEMPDATA* tstempdata = topiclist->tstempdatahead;
     while (tstempdata != NULL) {
         struct TSTEMPDATA* tmp = tstempdata;
@@ -184,14 +182,21 @@ void createtsfile (struct TOPICLIST *topiclist) {
 }
 
 void createalltsfile () {
+    struct CONFIG* config = getconfig ();
     struct TOPICLIST *topiclist = topiclisthead;
     while (topiclist != NULL) {
-        if (topiclist->buffusedsize == 0) {
+        if (topiclist->willdelete) {
+            struct TOPICLIST *tmp = topiclist;
+            topiclist = topiclist->tail;
+            removetopicfromlist (tmp);
+        } else if (topiclist->buffusedsize == 0) {
             topiclist->emptytime++;
-            if (topiclist->emptytime >= 30) {
+            if (topiclist->emptytime >= config->tstimeout) {
                 struct TOPICLIST *tmp = topiclist;
                 topiclist = topiclist->tail;
                 removetopicfromlist (tmp);
+            } else {
+                topiclist = topiclist->tail;
             }
         } else {
             topiclist->emptytime = 0;
@@ -245,7 +250,6 @@ void addtsdatatobuff (struct TOPICLIST *topiclist, const char *data, size_t size
     memcpy(tstempdata->data, data, size);
     tstempdata->size = size;
     tstempdata->tail = NULL;
-    pthread_mutex_lock (&topiclist->mutex);
     if (topiclist->tstempdatahead == NULL) {
         topiclist->tstempdatahead = tstempdata;
         topiclist->tstempdatatail = topiclist->tstempdatahead;
@@ -254,5 +258,4 @@ void addtsdatatobuff (struct TOPICLIST *topiclist, const char *data, size_t size
         topiclist->tstempdatatail = topiclist->tstempdatatail->tail;
     }
     topiclist->buffusedsize += size;
-    pthread_mutex_unlock (&topiclist->mutex);
 }
