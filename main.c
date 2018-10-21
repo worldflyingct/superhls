@@ -70,21 +70,35 @@ int connectionHandler(void *cls,
             }
             size_t len;
             pthread_rwlock_rdlock(&rwlock);
-            char *html = gettsfile (topic, id, &len);
-            response = MHD_create_response_from_buffer(len, html, MHD_RESPMEM_MUST_COPY);
+            char* html = gettsfile (topic, id, &len);
+            char* buff = malloc(len); // 这里不使用memmalloc，因为这里是利用MHD_RESPMEM_MUST_FREE释放的
+            if (len != 0) {
+                buff = malloc(len); // 这里不使用memalloc，因为这里是利用MHD_RESPMEM_MUST_FREE释放的
+                memcpy(buff, html, len);
+            } else {
+                buff = malloc(1); // 这里是申请1是为了保证在MHD_RESPMEM_MUST_FREE中不会出现异常
+            }
             pthread_rwlock_unlock(&rwlock);
             memfree (topic);
+            response = MHD_create_response_from_buffer(len, buff, MHD_RESPMEM_MUST_FREE);
             MHD_add_response_header(response, "Content-Type", "video/mp2t");
         } else if (!strcmp(url + size-5, ".m3u8")) {
-            char *topic = (char*)memalloc(size-4, __FILE__, __LINE__); // ".m3u8"共5个字符,不减5只减4是为了\0
+            char* topic = (char*)memalloc(size-4, __FILE__, __LINE__); // ".m3u8"共5个字符,不减5只减4是为了\0
             memcpy(topic, url, size-5);
             topic[size-5] = '\0';
             size_t len;
             pthread_rwlock_rdlock(&rwlock);
-            char *html = getm3u8file (topic, &len);
-            response = MHD_create_response_from_buffer(len, html, MHD_RESPMEM_MUST_COPY);
+            char* html = getm3u8file (topic, &len);
+            char* buff;
+            if (len != 0) {
+                buff = malloc(len); // 这里不使用memalloc，因为这里是利用MHD_RESPMEM_MUST_FREE释放的
+                memcpy(buff, html, len);
+            } else {
+                buff = malloc(1); // 这里是申请1是为了保证在MHD_RESPMEM_MUST_FREE中不会出现异常
+            }
             pthread_rwlock_unlock(&rwlock);
             memfree (topic);
+            response = MHD_create_response_from_buffer(len, buff, MHD_RESPMEM_MUST_FREE);
             MHD_add_response_header(response, "Content-Type", "application/vnd.apple.mpegurl");
         } else {
             response = MHD_create_response_from_buffer(sizeof(INSTRUCTION)-1, INSTRUCTION, MHD_RESPMEM_PERSISTENT);
