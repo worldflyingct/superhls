@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 
-#define STOREMALLOCNUM
+// #define STOREMALLOCNUM
 
 #ifdef STOREMALLOCNUM
 static int mallocnum = 0;
