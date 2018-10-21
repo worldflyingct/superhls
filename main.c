@@ -31,7 +31,7 @@ int connectionHandler(void *cls,
             pthread_rwlock_unlock(&rwlock);
             if (topiclist == NULL) {
                 pthread_rwlock_wrlock(&rwlock);
-                topiclist = addtopictolist (url, ptr);
+                topiclist = addtopictolist (url);
                 pthread_rwlock_unlock(&rwlock);
             }
             *ptr = topiclist;
