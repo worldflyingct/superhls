@@ -26,30 +26,32 @@ int connectionHandler(void *cls,
             void ** ptr) {
     struct MHD_Response *response;
     if (!strcmp(method, "POST")) {
+        pthread_rwlock_rdlock(&rwlock);
         if (*ptr == NULL) {
-            pthread_rwlock_rdlock(&rwlock);
             struct TOPICLIST* topiclist = gettopiclist (url);
-            pthread_rwlock_unlock(&rwlock);
             if (topiclist == NULL) {
-                pthread_rwlock_wrlock(&rwlock);
-                topiclist = addtopictolist (url);
+                topiclist = addtopictolist (url, ptr);
+                if (*upload_data_size != 0) {
+                    addtsdatatobuff(topiclist, upload_data, *upload_data_size);
+                }
                 pthread_rwlock_unlock(&rwlock);
                 *ptr = topiclist;
                 return MHD_YES;
             } else {
+                pthread_rwlock_unlock(&rwlock);
                 response = MHD_create_response_from_buffer(sizeof(TOPICCONFLICT)-1, TOPICCONFLICT, MHD_RESPMEM_PERSISTENT);
                 MHD_add_response_header(response, "Content-Type", "text/plain");
             }
         } else {
             struct TOPICLIST* topiclist = *ptr;
             if (*upload_data_size != 0) {
-                pthread_rwlock_rdlock(&rwlock);
                 addtsdatatobuff(topiclist, upload_data, *upload_data_size);
                 pthread_rwlock_unlock(&rwlock);
                 *upload_data_size = 0;
                 return MHD_YES;
             }
             topiclist->willdelete = 1;
+            pthread_rwlock_unlock(&rwlock);
             response = MHD_create_response_from_buffer(sizeof(TRANSFERFINISH)-1, TRANSFERFINISH, MHD_RESPMEM_PERSISTENT);
             MHD_add_response_header(response, "Content-Type", "text/plain");
             MHD_add_response_header(response, "Access-Control-Allow-Headers", "*");

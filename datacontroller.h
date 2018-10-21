@@ -23,6 +23,7 @@ struct TOPICLIST {
     size_t buffusedsize; // 这里记录有多少的tsdatabuff已经被使用
     int emptytime;
     int willdelete;
+    void** ptr;
     struct TSDATALIST* tsdatalisthead;
     struct TSDATALIST* tsdatalisttail;
     unsigned int tsdatastep;
@@ -33,7 +34,7 @@ struct TOPICLIST {
 };
 
 struct TOPICLIST *gettopiclist (const char* topic);
-struct TOPICLIST *addtopictolist (const char* topic);
+struct TOPICLIST *addtopictolist (const char* topic, void** ptr);
 void removetopicfromlist (struct TOPICLIST *topiclist);
 void addtsdatatobuff (struct TOPICLIST *topiclist, const char *data, size_t len);
 char *getm3u8file (char *topic, size_t* len);

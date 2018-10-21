@@ -25,7 +25,7 @@ struct TOPICLIST *gettopiclist (const char* topic) {
 
 #define MAXTSPACKAGE 16
 
-struct TOPICLIST *addtopictolist (const char* topic) {
+struct TOPICLIST *addtopictolist (const char* topic, void** ptr) {
     struct TOPICLIST *topiclist = (struct TOPICLIST*)memalloc(sizeof(struct TOPICLIST), __FILE__, __LINE__);
     size_t len = strlen(topic);
     topiclist->topic = (char*)memalloc(len + 1, __FILE__, __LINE__);
@@ -35,6 +35,7 @@ struct TOPICLIST *addtopictolist (const char* topic) {
     topiclist->buffusedsize = 0;
     topiclist->emptytime = 0;
     topiclist->willdelete = 0;
+    topiclist->ptr = ptr;
     struct TSDATALIST* tsdatalisthead = NULL;
     struct TSDATALIST* tsdatalisttail = NULL;
     for (int i = 0 ; i < MAXTSPACKAGE ; i++) {
@@ -194,6 +195,8 @@ void createalltsfile () {
             if (topiclist->emptytime >= config->tstimeout) {
                 struct TOPICLIST *tmp = topiclist;
                 topiclist = topiclist->tail;
+                void** ptr = tmp->ptr;
+                *ptr = NULL;
                 removetopicfromlist (tmp);
             } else {
                 topiclist = topiclist->tail;
