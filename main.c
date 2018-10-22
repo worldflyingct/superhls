@@ -134,12 +134,15 @@ void signalarmhandle () {
 
 int main (int argc, char *argv[]) {
     int isdeamon = 1;
-    if (argc == 2) {
+    if (argc > 1) {
         if (strcmp(argv[1], "--version") == 0) {
             printf("%s %s\n", __DATE__, __TIME__);
             return 0;
         } else if (strcmp(argv[1], "--run") == 0) {
             isdeamon = 0;
+        } else {
+            printf("unknown paramater, in %s, at %d\n", __FILE__, __LINE__);
+            return -1;
         }
     }
     if (isdeamon) {
