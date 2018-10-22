@@ -11,9 +11,11 @@
 #include "memalloc.h"
 
 static pthread_rwlock_t rwlock = PTHREAD_RWLOCK_INITIALIZER;
+static int dummy;
 
 #define INSTRUCTION    "This is jsmpegserver, power by https://www.worldflying.cn, if you have some question, you can send a email to jevian_ma@worldflying.cn"
 #define TOPICCONFLICT  "{\"errcode\":-1, \"errmsg\":\"topic exist\"}"
+#define TOPICRELEASED  "{\"errcode\":-2, \"errmsg\":\"topic is released\"}"
 #define TRANSFERFINISH "{\"errcode\":0, \"errmsg\":\transfer finish\"}"
 
 int connectionHandler(void *cls,
@@ -42,6 +44,9 @@ int connectionHandler(void *cls,
                 response = MHD_create_response_from_buffer(sizeof(TOPICCONFLICT)-1, TOPICCONFLICT, MHD_RESPMEM_PERSISTENT);
                 MHD_add_response_header(response, "Content-Type", "text/plain");
             }
+        } else if (*ptr == &dummy) {
+            response = MHD_create_response_from_buffer(sizeof(TOPICRELEASED)-1, TOPICRELEASED, MHD_RESPMEM_PERSISTENT);
+            MHD_add_response_header(response, "Content-Type", "text/plain");
         } else {
             struct TOPICLIST* topiclist = *ptr;
             if (*upload_data_size != 0) {
@@ -76,7 +81,7 @@ int connectionHandler(void *cls,
                 buff = malloc(len); // 这里不使用memalloc，因为这里是利用MHD_RESPMEM_MUST_FREE释放的
                 memcpy(buff, html, len);
             } else {
-                buff = malloc(1); // 这里是申请1是为了保证在MHD_RESPMEM_MUST_FREE中不会出现异常
+                buff = malloc(1); // 这里是申请1是为了保证在MHD_RESPMEM_MUST_FREE中释放不会出现异常
             }
             pthread_rwlock_unlock(&rwlock);
             memfree (topic);
@@ -113,7 +118,7 @@ int connectionHandler(void *cls,
 
 void *thread_func(void *arg) {
     pthread_rwlock_wrlock(&rwlock);
-    createalltsfile ();
+    createalltsfile (&dummy);
     pthread_rwlock_unlock(&rwlock);
 }
 

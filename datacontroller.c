@@ -182,7 +182,7 @@ void createtsfile (struct TOPICLIST *topiclist) {
     topiclist->buffusedsize = 0;
 }
 
-void createalltsfile () {
+void createalltsfile (int* addr) {
     struct CONFIG* config = getconfig ();
     struct TOPICLIST *topiclist = topiclisthead;
     while (topiclist != NULL) {
@@ -196,7 +196,7 @@ void createalltsfile () {
                 struct TOPICLIST *tmp = topiclist;
                 topiclist = topiclist->tail;
                 void** ptr = tmp->ptr;
-                *ptr = NULL;
+                *ptr = addr;
                 removetopicfromlist (tmp);
             } else {
                 topiclist = topiclist->tail;

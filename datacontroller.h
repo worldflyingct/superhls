@@ -40,6 +40,6 @@ void addtsdatatobuff (struct TOPICLIST *topiclist, const char *data, size_t len)
 char *getm3u8file (char *topic, size_t* len);
 char *gettsfile (char *topic, size_t id, size_t *len);
 char* getlatesttsfile (char *topic, size_t *len);
-void createalltsfile ();
+void createalltsfile (int* addr);
 
 #endif
