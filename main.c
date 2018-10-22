@@ -45,6 +45,7 @@ int connectionHandler(void *cls,
                 MHD_add_response_header(response, "Content-Type", "text/plain");
             }
         } else if (*ptr == &dummy) {
+            pthread_rwlock_unlock(&rwlock);
             response = MHD_create_response_from_buffer(sizeof(TOPICRELEASED)-1, TOPICRELEASED, MHD_RESPMEM_PERSISTENT);
             MHD_add_response_header(response, "Content-Type", "text/plain");
         } else {
@@ -132,7 +133,16 @@ void signalarmhandle () {
 }
 
 int main (int argc, char *argv[]) {
-    if (argc != 2 || strcmp(argv[1], "--run") != 0) {
+    int isdeamon = 1;
+    if (argc == 2) {
+        if (strcmp(argv[1], "--version") == 0) {
+            printf("%s %s\n", __DATE__, __TIME__);
+            return 0;
+        } else if (strcmp(argv[1], "--run") == 0) {
+            isdeamon = 0;
+        }
+    }
+    if (isdeamon) {
         int pid = fork();
         if (pid < 0) {
             printf("create hide thread fail\n");
