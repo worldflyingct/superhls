@@ -1,7 +1,6 @@
 #include <unistd.h>
 #include <jansson.h>
 #include "config.h"
-#include "memalloc.h"
 
 static struct CONFIG config;
 
