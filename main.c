@@ -45,7 +45,9 @@ int connectionHandler(void *cls,
         } else {
             struct TOPICLIST* topiclist = *ptr;
             if (*upload_data_size != 0) {
+                pthread_rwlock_rdlock(&rwlock);
                 addtsdatatobuff(topiclist, upload_data, *upload_data_size);
+                pthread_rwlock_unlock(&rwlock);
                 *upload_data_size = 0;
                 return MHD_YES;
             }
