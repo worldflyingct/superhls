@@ -11,11 +11,9 @@
 #include "memalloc.h"
 
 static pthread_rwlock_t rwlock = PTHREAD_RWLOCK_INITIALIZER;
-static int dummy;
 
 #define INSTRUCTION    "This is jsmpegserver, power by https://www.worldflying.cn, if you have some question, you can send a email to jevian_ma@worldflying.cn"
 #define TOPICCONFLICT  "{\"errcode\":-1, \"errmsg\":\"topic exist\"}"
-#define TOPICRELEASED  "{\"errcode\":-2, \"errmsg\":\"topic is released\"}"
 #define TRANSFERFINISH "{\"errcode\":0, \"errmsg\":\transfer finish\"}"
 
 int connectionHandler(void *cls,
@@ -28,15 +26,15 @@ int connectionHandler(void *cls,
             void ** ptr) {
     struct MHD_Response *response;
     if (!strcmp(method, "POST")) {
-        pthread_rwlock_rdlock(&rwlock);
         if (*ptr == NULL) {
+            pthread_rwlock_rdlock(&rwlock);
             struct TOPICLIST* topiclist = gettopiclist (url);
             if (topiclist == NULL) {
-                topiclist = addtopictolist (url, ptr);
+                topiclist = addtopictolist (url);
+                pthread_rwlock_unlock(&rwlock);
                 if (*upload_data_size != 0) {
                     addtsdatatobuff(topiclist, upload_data, *upload_data_size);
                 }
-                pthread_rwlock_unlock(&rwlock);
                 *ptr = topiclist;
                 return MHD_YES;
             } else {
@@ -44,20 +42,13 @@ int connectionHandler(void *cls,
                 response = MHD_create_response_from_buffer(sizeof(TOPICCONFLICT)-1, TOPICCONFLICT, MHD_RESPMEM_PERSISTENT);
                 MHD_add_response_header(response, "Content-Type", "text/plain");
             }
-        } else if (*ptr == &dummy) {
-            pthread_rwlock_unlock(&rwlock);
-            response = MHD_create_response_from_buffer(sizeof(TOPICRELEASED)-1, TOPICRELEASED, MHD_RESPMEM_PERSISTENT);
-            MHD_add_response_header(response, "Content-Type", "text/plain");
         } else {
             struct TOPICLIST* topiclist = *ptr;
             if (*upload_data_size != 0) {
                 addtsdatatobuff(topiclist, upload_data, *upload_data_size);
-                pthread_rwlock_unlock(&rwlock);
                 *upload_data_size = 0;
                 return MHD_YES;
             }
-            topiclist->willdelete = 1;
-            pthread_rwlock_unlock(&rwlock);
             response = MHD_create_response_from_buffer(sizeof(TRANSFERFINISH)-1, TRANSFERFINISH, MHD_RESPMEM_PERSISTENT);
             MHD_add_response_header(response, "Content-Type", "text/plain");
             MHD_add_response_header(response, "Access-Control-Allow-Headers", "*");
@@ -77,16 +68,9 @@ int connectionHandler(void *cls,
             size_t len;
             pthread_rwlock_rdlock(&rwlock);
             char* html = gettsfile (topic, id, &len);
-            char* buff = malloc(len); // 这里不使用memmalloc，因为这里是利用MHD_RESPMEM_MUST_FREE释放的
-            if (len != 0) {
-                buff = malloc(len); // 这里不使用memalloc，因为这里是利用MHD_RESPMEM_MUST_FREE释放的
-                memcpy(buff, html, len);
-            } else {
-                buff = malloc(1); // 这里是申请1是为了保证在MHD_RESPMEM_MUST_FREE中释放不会出现异常
-            }
             pthread_rwlock_unlock(&rwlock);
             memfree (topic);
-            response = MHD_create_response_from_buffer(len, buff, MHD_RESPMEM_MUST_FREE);
+            response = MHD_create_response_from_buffer(len, html, MHD_RESPMEM_PERSISTENT);
             MHD_add_response_header(response, "Content-Type", "video/mp2t");
         } else if (!strcmp(url + size-5, ".m3u8")) {
             char* topic = (char*)memalloc(size-4, __FILE__, __LINE__); // ".m3u8"共5个字符,不减5只减4是为了\0
@@ -95,16 +79,9 @@ int connectionHandler(void *cls,
             size_t len;
             pthread_rwlock_rdlock(&rwlock);
             char* html = getm3u8file (topic, &len);
-            char* buff;
-            if (len != 0) {
-                buff = malloc(len); // 这里不使用memalloc，因为这里是利用MHD_RESPMEM_MUST_FREE释放的
-                memcpy(buff, html, len);
-            } else {
-                buff = malloc(1); // 这里是申请1是为了保证在MHD_RESPMEM_MUST_FREE中不会出现异常
-            }
             pthread_rwlock_unlock(&rwlock);
             memfree (topic);
-            response = MHD_create_response_from_buffer(len, buff, MHD_RESPMEM_MUST_FREE);
+            response = MHD_create_response_from_buffer(len, html, MHD_RESPMEM_PERSISTENT);
             MHD_add_response_header(response, "Content-Type", "application/vnd.apple.mpegurl");
         } else {
             response = MHD_create_response_from_buffer(sizeof(INSTRUCTION)-1, INSTRUCTION, MHD_RESPMEM_PERSISTENT);
@@ -117,9 +94,16 @@ int connectionHandler(void *cls,
     return ret;
 }
 
+void request_completed (void *cls, struct MHD_Connection *connection, void **con_cls, enum MHD_RequestTerminationCode toe) {
+    if (*con_cls != NULL) {
+        struct TOPICLIST* topiclist = *con_cls;
+        topiclist->willdelete = 1;
+    }
+}
+
 void *thread_func(void *arg) {
     pthread_rwlock_wrlock(&rwlock);
-    createalltsfile (&dummy);
+    createalltsfile ();
     pthread_rwlock_unlock(&rwlock);
 }
 
@@ -163,7 +147,7 @@ int main (int argc, char *argv[]) {
     itv.it_value.tv_usec = itv.it_interval.tv_usec = config->tstimelong_usec;
     setitimer(ITIMER_REAL, &itv, NULL);
     int cpunum = get_nprocs();
-    struct MHD_Daemon *daemon = MHD_start_daemon(MHD_USE_EPOLL_INTERNALLY, config->port, NULL, NULL, &connectionHandler, NULL, MHD_OPTION_THREAD_POOL_SIZE, cpunum, MHD_OPTION_END);
+    struct MHD_Daemon *daemon = MHD_start_daemon(MHD_USE_EPOLL_INTERNALLY, config->port, NULL, NULL, &connectionHandler, NULL, MHD_OPTION_NOTIFY_COMPLETED, &request_completed, NULL, MHD_OPTION_THREAD_POOL_SIZE, cpunum, MHD_OPTION_END);
     if (daemon == NULL) {
         printf("run http server fail, in %s, at %d\n", __FILE__, __LINE__);
         return -1;
