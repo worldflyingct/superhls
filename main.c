@@ -31,9 +31,11 @@ int connectionHandler(void *cls,
             struct TOPICLIST* topiclist = gettopiclist (url);
             if (topiclist == NULL) {
                 topiclist = addtopictolist (url);
-                pthread_rwlock_unlock(&rwlock);
                 if (*upload_data_size != 0) {
                     addtsdatatobuff(topiclist, upload_data, *upload_data_size);
+                    pthread_rwlock_unlock(&rwlock);
+                } else {
+                    pthread_rwlock_unlock(&rwlock);
                 }
                 *ptr = topiclist;
                 return MHD_YES;
@@ -97,8 +99,8 @@ int connectionHandler(void *cls,
 }
 
 void request_completed (void *cls, struct MHD_Connection *connection, void **con_cls, enum MHD_RequestTerminationCode toe) {
-    if (*con_cls != NULL) {
-        struct TOPICLIST* topiclist = *con_cls;
+    struct TOPICLIST* topiclist = *con_cls;
+    if (topiclist != NULL) {
         topiclist->willdelete = 1;
     }
 }
