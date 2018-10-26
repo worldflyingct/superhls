@@ -105,19 +105,10 @@ void request_completed (void *cls, struct MHD_Connection *connection, void **con
     }
 }
 
-void *thread_func(void *arg) {
+void signalarmhandle () {
     pthread_rwlock_wrlock(&rwlock);
     createalltsfile ();
     pthread_rwlock_unlock(&rwlock);
-}
-
-void signalarmhandle () {
-    pthread_t tid;
-    pthread_attr_t attr;
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-    pthread_create(&tid, &attr, thread_func, NULL);
-    pthread_attr_destroy(&attr);
 }
 
 int main (int argc, char *argv[]) {
