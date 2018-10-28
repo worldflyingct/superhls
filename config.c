@@ -18,6 +18,12 @@ struct CONFIG* initconfig () {
         } else {
             config.port = json_integer_value(port);
         }
+        json_t *usefultsnumber = json_object_get(obj, "usefultsnumber");
+        if (usefultsnumber == NULL) {
+            config.usefultsnumber = 10;
+        } else {
+            config.usefultsnumber = json_integer_value(usefultsnumber);
+        }
         json_t *tstimelong = json_object_get(obj, "tstimelong");
         if (tstimelong == NULL) {
             config.tstimelong_sec = 1;
@@ -36,10 +42,12 @@ struct CONFIG* initconfig () {
     } else {
         json_t *obj = json_object();
         json_object_set_new(obj, "port", json_integer(8002));
+        json_object_set_new(obj, "usefultsnumber", json_integer(10));
         json_object_set_new(obj, "tstimelong", json_integer(1000000));
         json_dump_file(obj, "config.json", 0);
         json_decref(obj);
         config.port = 8002;
+        config.usefultsnumber = 10;
         config.tstimelong_sec = 1;
         config.tstimelong_usec = 0;
     }

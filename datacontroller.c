@@ -23,8 +23,6 @@ struct TOPICLIST *gettopiclist (const char* topic) {
 #define EXTM3UDATA   "#EXTINF:"
 #define EXTM3UFOOT   "#EXT-X-ENDLIST\r"
 
-#define MAXTSPACKAGE 16
-
 struct TOPICLIST *addtopictolist (const char* topic) {
     struct TOPICLIST *topiclist = (struct TOPICLIST*)memalloc(sizeof(struct TOPICLIST), __FILE__, __LINE__);
     size_t len = strlen(topic);
@@ -36,7 +34,8 @@ struct TOPICLIST *addtopictolist (const char* topic) {
     topiclist->willdelete = 0;
     struct TSDATALIST* tsdatalisthead = NULL;
     struct TSDATALIST* tsdatalisttail = NULL;
-    for (int i = 0 ; i < MAXTSPACKAGE ; i++) {
+    struct CONFIG* config = getconfig ();
+    for (int i = 0 ; i < config->usefultsnumber ; i++) {
         struct TSDATALIST* tsdatalist = (struct TSDATALIST*)memalloc(sizeof(struct TSDATALIST), __FILE__, __LINE__);
         tsdatalist->id = i;
         tsdatalist->data = (char*)memalloc(1, __FILE__, __LINE__); // 为了防止后面free出现内存异常
@@ -54,7 +53,7 @@ struct TOPICLIST *addtopictolist (const char* topic) {
     }
     topiclist->tsdatalisthead = tsdatalisthead;
     topiclist->tsdatalisttail = tsdatalisttail;
-    topiclist->tsdatastep = MAXTSPACKAGE;
+    topiclist->tsdatastep = config->usefultsnumber;
     topiclist->m3u8 = (char*)memalloc(sizeof(EXTM3UHEAD1"1\r"EXTM3UHEAD2"0\r"EXTM3UFOOT), __FILE__, __LINE__);
     memcpy(topiclist->m3u8, EXTM3UHEAD1"1\r"EXTM3UHEAD2"0\r"EXTM3UFOOT, sizeof(EXTM3UHEAD1"1\r"EXTM3UHEAD2"0\r"EXTM3UFOOT));
     topiclist->m3u8len = sizeof(EXTM3UHEAD1"1\r"EXTM3UHEAD2"0\r"EXTM3UFOOT) - 1;
@@ -84,7 +83,7 @@ void removetopicfromlist (struct TOPICLIST *topiclist) {
     }
     memfree (topiclist->topic);
     struct TSDATALIST *tsdatalist = topiclist->tsdatalisthead;
-    for (int i = 0 ; i < MAXTSPACKAGE ; i++) {
+    while (tsdatalist != NULL) {
         struct TSDATALIST *tmp = tsdatalist;
         tsdatalist = tsdatalist->tail;
         memfree (tmp->data);

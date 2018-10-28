@@ -3,6 +3,7 @@
 
 struct CONFIG {
     unsigned int port;
+    unsigned int usefultsnumber;
     unsigned int tstimelong_sec;
     unsigned int tstimelong_usec;
 };
