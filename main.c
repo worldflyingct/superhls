@@ -11,6 +11,7 @@
 #include "memalloc.h"
 
 static pthread_rwlock_t rwlock = PTHREAD_RWLOCK_INITIALIZER;
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #define INSTRUCTION    "This is jsmpegserver, power by https://www.worldflying.cn, if you have some question, you can send a email to jevian_ma@worldflying.cn"
 #define TOPICCONFLICT  "{\"errcode\":-1, \"errmsg\":\"topic exist\"}"
@@ -30,7 +31,9 @@ int connectionHandler(void *cls,
             pthread_rwlock_rdlock(&rwlock);
             struct TOPICLIST* topiclist = gettopiclist (url);
             if (topiclist == NULL) {
+                pthread_mutex_lock(&mutex);
                 topiclist = addtopictolist (url);
+                pthread_mutex_unlock(&mutex);
                 if (*upload_data_size != 0) {
                     addtsdatatobuff(topiclist, upload_data, *upload_data_size);
                     pthread_rwlock_unlock(&rwlock);
